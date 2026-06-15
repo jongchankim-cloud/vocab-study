@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>능률VOCA · 학습 관리</title>
+<style>
+  :root{
+    --ink:#1c2733;--ink-soft:#5a6b7b;--paper:#f6f4ee;--card:#ffffff;--line:#dfe4ea;
+    --accent:#2f6f5e;--accent-soft:#e3efe9;--gold:#c08a2d;--wrong:#c0492f;--wrong-soft:#f7e6e1;
+    --shadow:0 6px 24px rgba(28,39,51,.08);--r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    background:var(--paper);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:24px 18px 80px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  .hidden{display:none !important}
+
+  header.top{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+  .brand{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .tools{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .tools button{font-size:13px;color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px}
+  .tools button:hover{color:var(--accent)}
+
+  h1.title{font-size:28px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
+  .subtitle{color:var(--ink-soft);font-size:15px;margin-bottom:22px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:22px}
+
+  /* gate */
+  .gate-wrap{max-width:380px;margin:40px auto 0}
+  .fld{display:flex;flex-direction:column;gap:7px;margin-bottom:16px}
+  .fld span{font-size:13px;font-weight:700;color:var(--ink-soft)}
+  .fld input{border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:18px;
+    background:var(--paper);transition:.15s;width:100%;text-align:center;letter-spacing:.3em}
+  .fld input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .go{width:100%;background:var(--accent);color:#fff;border-radius:12px;padding:15px;font-weight:800;font-size:16px}
+  .go:hover{background:#27604f}
+  .gate-msg{font-size:13px;text-align:center;color:var(--wrong);font-weight:600;min-height:18px;margin-top:10px}
+
+  /* stats row */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  @media(max-width:560px){.stats{grid-template-columns:1fr}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .stat .n{font-size:28px;font-weight:800;color:var(--accent)}
+  .stat .l{font-size:13px;color:var(--ink-soft)}
+
+  .bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .search{flex:1;min-width:180px;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:14px;background:var(--paper)}
+  .search:focus{outline:none;border-color:var(--accent);background:#fff}
+  .refresh{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:11px 16px;font-weight:700;font-size:14px}
+  .refresh:hover{border-color:var(--accent);background:var(--accent-soft)}
+
+  /* student list */
+  .srow{display:flex;align-items:center;gap:14px;padding:15px 10px;border-bottom:1px solid var(--line);width:100%;text-align:left;transition:.12s}
+  .srow:last-child{border-bottom:none}
+  .srow:hover{background:var(--accent-soft)}
+  .srow .nm{font-size:17px;font-weight:700;min-width:110px}
+  .srow .kk{font-size:12px;color:var(--ink-soft);font-family:ui-monospace,monospace}
+  .srow .pills{margin-left:auto;display:flex;gap:8px;flex:none}
+  .pill{font-size:12px;font-weight:700;border-radius:99px;padding:4px 11px}
+  .pill.fav{background:#f6edd8;color:var(--gold)}
+  .pill.wrong{background:var(--wrong-soft);color:var(--wrong)}
+  .pill.zero{background:var(--paper);color:var(--ink-soft);font-weight:400}
+  .chev{color:var(--line);font-size:18px;flex:none}
+
+  /* detail */
+  .back{font-size:14px;color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:600;margin-bottom:14px;display:inline-block}
+  .detail-head{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+  .detail-head .dn{font-size:24px;font-weight:800}
+  .detail-head .dk{font-size:13px;color:var(--ink-soft);font-family:ui-monospace,monospace}
+  .seg{display:flex;gap:8px;margin:18px 0 14px}
+  .seg button{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:9px 18px;font-weight:700;font-size:14px;color:var(--ink-soft)}
+  .seg button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .vrow{display:flex;align-items:center;gap:12px;padding:12px 6px;border-bottom:1px solid var(--line)}
+  .vrow:last-child{border-bottom:none}
+  .vrow .vw{font-size:16px;font-weight:700;min-width:110px}
+  .vrow .vg{font-size:11px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:2px 9px;flex:none}
+  .vrow .vm{color:var(--ink-soft);flex:1;font-size:14px}
+  .empty-state{text-align:center;padding:44px 20px;color:var(--ink-soft)}
+  .empty-state .e-ic{font-size:38px;margin-bottom:10px}
+  footer{margin-top:30px;text-align:center;font-size:12px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">능률VOCA · 학습 관리</span>
+    <div class="tools" id="tools"></div>
+  </header>
+
+  <!-- GATE -->
+  <section id="screen-gate">
+    <div class="gate-wrap">
+      <h1 class="title" style="text-align:center">관리자 확인</h1>
+      <p class="subtitle" style="text-align:center">관리자 번호를 입력하세요.</p>
+      <div class="panel">
+        <div class="fld">
+          <span style="text-align:center">관리자 번호</span>
+          <input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off">
+        </div>
+        <button class="go" id="gateBtn">들어가기</button>
+        <p class="gate-msg" id="gateMsg"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIST -->
+  <section id="screen-list" class="hidden">
+    <h1 class="title">학생 명단</h1>
+    <p class="subtitle">이름을 누르면 그 학생의 즐겨찾기·틀린 단어를 볼 수 있어요.</p>
+    <div class="stats" id="stats"></div>
+    <div class="panel">
+      <div class="bar">
+        <input class="search" id="search" placeholder="이름으로 검색">
+        <button class="refresh" id="refresh">↻ 새로고침</button>
+      </div>
+      <div id="studentList"></div>
+    </div>
+  </section>
+
+  <!-- DETAIL -->
+  <section id="screen-detail" class="hidden">
+    <span class="back" id="backBtn">← 명단으로</span>
+    <div class="panel">
+      <div class="detail-head">
+        <span class="dn" id="dName"></span>
+        <span class="dk" id="dKey"></span>
+      </div>
+      <div class="seg">
+        <button data-tab="fav" class="active" id="tabFav">⭐ 즐겨찾기 <span id="favN"></span></button>
+        <button data-tab="wrong" id="tabWrong">🔁 틀린 단어 <span id="wrongN"></span></button>
+      </div>
+      <div id="detailBody"></div>
+    </div>
+  </section>
+
+  <footer>능률VOCA 학습 관리 · 학원 내부용</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== Supabase ===== */
+const SUPABASE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4enNsZXJ5enBqYW9xY2l5cXZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDc4MDIsImV4cCI6MjA5NzA4MzgwMn0.mt91HfP2DV4Q9gZ_0Ts-B2P6fB3PmQlLJK2XcJeKzL4";
+const ADMIN_PIN = "1357";
+let sb=null;
+try{ sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON); }catch(e){ console.warn(e); }
+
+const $=id=>document.getElementById(id);
+const screens=["gate","list","detail"];
+function show(n){screens.forEach(s=>$("screen-"+s).classList.toggle("hidden",s!==n));window.scrollTo(0,0);
+  $("tools").innerHTML = n==="gate" ? "" : "";
+}
+
+let ALL=[];            // all rows
+let STUDENTS=[];       // [{key,name,fav:[],wrong:[]}]
+let current=null;
+
+/* ---- gate ---- */
+function tryGate(){
+  const v=$("pin").value.trim();
+  if(v===ADMIN_PIN){ $("gateMsg").textContent=""; enter(); }
+  else{ $("gateMsg").textContent="번호가 올바르지 않습니다."; $("pin").select(); }
+}
+$("gateBtn").onclick=tryGate;
+$("pin").addEventListener("keydown",e=>{if(e.key==="Enter")tryGate();});
+
+async function enter(){
+  $("tools").innerHTML='<button id="logout">잠그기</button>';
+  $("logout").onclick=()=>{ $("pin").value=""; show("gate"); $("pin").focus(); };
+  await loadAll();
+  show("list");
+}
+
+/* ---- load ---- */
+async function loadAll(){
+  if(!sb){ alert("Supabase 연결에 실패했어요."); return; }
+  try{
+    const {data,error}=await sb.from("progress")
+      .select("student_key,student_name,kind,word,grp,day,updated_at")
+      .order("updated_at",{ascending:false});
+    if(error)throw error;
+    ALL=data||[];
+    groupStudents();
+    renderStats();
+    renderList();
+  }catch(e){
+    console.warn(e);
+    $("studentList").innerHTML=`<div class="empty-state"><div class="e-ic">⚠️</div>데이터를 불러오지 못했어요.<br>잠시 후 새로고침해 주세요.</div>`;
+  }
+}
+function groupStudents(){
+  const map={};
+  ALL.forEach(r=>{
+    const k=r.student_key;
+    if(!map[k]) map[k]={key:k, name:r.student_name||k, fav:[], wrong:[]};
+    const entry={word:r.word, grp:r.grp, day:r.day};
+    if(r.kind==="fav") map[k].fav.push(entry);
+    else if(r.kind==="wrong") map[k].wrong.push(entry);
+  });
+  STUDENTS=Object.values(map).sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+}
+
+/* ---- stats ---- */
+function renderStats(){
+  const favTot=ALL.filter(r=>r.kind==="fav").length;
+  const wrongTot=ALL.filter(r=>r.kind==="wrong").length;
+  $("stats").innerHTML=`
+    <div class="stat"><div class="n">${STUDENTS.length}</div><div class="l">학생 수</div></div>
+    <div class="stat"><div class="n">${favTot}</div><div class="l">즐겨찾기 단어 (전체)</div></div>
+    <div class="stat"><div class="n">${wrongTot}</div><div class="l">틀린 단어 (전체)</div></div>`;
+}
+
+/* ---- list ---- */
+function renderList(){
+  const q=($("search").value||"").trim().toLowerCase();
+  const box=$("studentList"); box.innerHTML="";
+  const rows=STUDENTS.filter(s=>s.name.toLowerCase().includes(q));
+  if(rows.length===0){
+    box.innerHTML=`<div class="empty-state"><div class="e-ic">📭</div>${ALL.length===0?"아직 학습 기록이 없어요.<br>학생이 로그인해 별표하거나 퀴즈를 풀면 여기에 표시됩니다.":"검색 결과가 없습니다."}</div>`;
+    return;
+  }
+  rows.forEach(s=>{
+    const b=document.createElement("button"); b.className="srow";
+    const favP = s.fav.length ? `<span class="pill fav">⭐ ${s.fav.length}</span>` : `<span class="pill zero">⭐ 0</span>`;
+    const wrP  = s.wrong.length ? `<span class="pill wrong">🔁 ${s.wrong.length}</span>` : `<span class="pill zero">🔁 0</span>`;
+    b.innerHTML=`<span class="nm">${esc(s.name)}</span><span class="kk">${esc(s.key)}</span>
+      <span class="pills">${favP}${wrP}</span><span class="chev">›</span>`;
+    b.onclick=()=>openDetail(s);
+    box.appendChild(b);
+  });
+}
+$("search").addEventListener("input",renderList);
+$("refresh").onclick=loadAll;
+
+/* ---- detail ---- */
+let activeTab="fav";
+function openDetail(s){
+  current=s; activeTab="fav";
+  $("dName").textContent=s.name;
+  $("dKey").textContent=s.key;
+  $("favN").textContent=`(${s.fav.length})`;
+  $("wrongN").textContent=`(${s.wrong.length})`;
+  setTab("fav");
+  show("detail");
+}
+function setTab(t){
+  activeTab=t;
+  $("tabFav").classList.toggle("active",t==="fav");
+  $("tabWrong").classList.toggle("active",t==="wrong");
+  const arr = t==="fav" ? current.fav : current.wrong;
+  const body=$("detailBody"); body.innerHTML="";
+  if(arr.length===0){
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">${t==="fav"?"⭐":"🔁"}</div>${t==="fav"?"즐겨찾기한 단어가 없어요.":"틀린 단어가 없어요."}</div>`;
+    return;
+  }
+  // sort by group then day
+  arr.slice().sort((a,b)=>(a.grp||"").localeCompare(b.grp||"","ko")|| (+a.day||0)-(+b.day||0))
+    .forEach(e=>{
+      const r=document.createElement("div"); r.className="vrow";
+      const tag = e.grp ? `${e.grp}${e.day?" · DAY "+e.day:""}` : "";
+      r.innerHTML=`<span class="vw">${esc(e.word||"")}</span>${tag?`<span class="vg">${esc(tag)}</span>`:""}<span class="vm"></span>`;
+      body.appendChild(r);
+    });
+}
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+$("backBtn").onclick=()=>{ renderList(); show("list"); };
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+
+/* ---- init ---- */
+show("gate");
+$("pin").focus();
+</script>
+</body>
+</html>
