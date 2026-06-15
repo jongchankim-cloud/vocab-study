@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>능률VOCA 단어 학습</title>
+<style>
+  :root{
+    --ink:#1c2733;
+    --ink-soft:#5a6b7b;
+    --paper:#f6f4ee;
+    --card:#ffffff;
+    --line:#dfe4ea;
+    --accent:#2f6f5e;       /* deep teal-green */
+    --accent-soft:#e3efe9;
+    --gold:#c08a2d;          /* marking accent */
+    --wrong:#c0492f;
+    --wrong-soft:#f7e6e1;
+    --shadow:0 6px 24px rgba(28,39,51,.08);
+    --r:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:24px 18px 80px;min-height:100%}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  .hidden{display:none !important}
+
+  /* ---------- Header ---------- */
+  header.top{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
+  .brand{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .crumb{font-size:13px;color:var(--ink-soft);margin-left:auto;display:flex;gap:8px;align-items:center}
+  .crumb button{color:var(--ink-soft);font-size:13px;text-decoration:underline;text-underline-offset:3px}
+  .crumb button:hover{color:var(--accent)}
+
+  h1.title{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:6px}
+  .subtitle{color:var(--ink-soft);font-size:15px;margin-bottom:24px}
+
+  /* ---------- Grade grid ---------- */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+  .grade-card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    padding:22px 20px;text-align:left;transition:transform .15s ease,box-shadow .15s ease,border-color .15s;
+    display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)
+  }
+  .grade-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(47,111,94,.14)}
+  .grade-card .g-eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
+  .grade-card .g-name{font-size:22px;font-weight:800}
+  .grade-card .g-meta{font-size:13px;color:var(--ink-soft)}
+  .grade-card.empty{opacity:.55}
+  .grade-card.empty:hover{transform:none;border-color:var(--line);box-shadow:var(--shadow)}
+
+  /* ---------- DAY list ---------- */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px}
+  .day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px;margin-top:16px}
+  .day-chip{
+    border:1px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center;
+    background:var(--paper);transition:.15s;font-weight:600
+  }
+  .day-chip:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .day-chip .d-num{font-size:16px}
+  .day-chip .d-count{font-size:11px;color:var(--ink-soft);font-weight:400}
+  .day-chip.all{background:var(--accent);color:#fff;border-color:var(--accent);grid-column:1/-1}
+  .day-chip.all:hover{background:#27604f}
+
+  /* ---------- Mode menu ---------- */
+  .mode-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
+  @media(max-width:560px){.mode-row{grid-template-columns:1fr}}
+  .mode-btn{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;text-align:left;
+    box-shadow:var(--shadow);transition:.15s;display:flex;gap:14px;align-items:center
+  }
+  .mode-btn:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .mode-btn .ic{font-size:24px;width:40px;height:40px;display:grid;place-items:center;background:var(--accent-soft);border-radius:10px;flex:none}
+  .mode-btn .m-title{font-weight:700;font-size:16px}
+  .mode-btn .m-sub{font-size:12px;color:var(--ink-soft)}
+  .mode-btn:disabled{opacity:.5;cursor:not-allowed}
+  .mode-btn:disabled:hover{transform:none;border-color:var(--line)}
+
+  .scope-banner{
+    background:var(--accent-soft);border-radius:12px;padding:12px 16px;margin-top:8px;
+    font-size:14px;color:var(--accent);font-weight:600;display:flex;justify-content:space-between;align-items:center
+  }
+  .scope-banner .chg{font-size:12px;text-decoration:underline;color:var(--accent);cursor:pointer}
+
+  /* ---------- Flashcard ---------- */
+  .stage{margin-top:18px}
+  .progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:18px}
+  .progress > i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+  .counter{text-align:center;font-size:13px;color:var(--ink-soft);margin-bottom:12px}
+
+  .flashcard{
+    perspective:1600px;height:300px;margin-bottom:18px
+  }
+  .fc-inner{position:relative;width:100%;height:100%;transition:transform .5s cubic-bezier(.4,.2,.2,1);transform-style:preserve-3d;cursor:pointer}
+  .fc-inner.flipped{transform:rotateY(180deg)}
+  .fc-face{
+    position:absolute;inset:0;backface-visibility:hidden;border-radius:20px;border:1px solid var(--line);
+    background:var(--card);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:28px;text-align:center
+  }
+  .fc-back{transform:rotateY(180deg);background:var(--accent);border-color:var(--accent);color:#fff}
+  .fc-word{font-size:38px;font-weight:800;letter-spacing:-.02em}
+  .fc-pos{display:inline-block;margin-top:14px;font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px}
+  .fc-mean{font-size:26px;font-weight:700;line-height:1.4}
+  .fc-hint{position:absolute;bottom:16px;font-size:12px;color:var(--ink-soft)}
+  .fc-back .fc-hint{color:rgba(255,255,255,.7)}
+  .fav-star{position:absolute;top:14px;right:16px;font-size:24px;color:var(--line);transition:.15s;z-index:3}
+  .fav-star.on{color:var(--gold)}
+  .fc-back .fav-star{color:rgba(255,255,255,.45)}
+  .fc-back .fav-star.on{color:#ffd97a}
+
+  .nav-row{display:flex;gap:10px}
+  .nav-row button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:14px;font-weight:700;font-size:15px;transition:.15s}
+  .nav-row button:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .nav-row button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .nav-row button.primary:hover{background:#27604f}
+  .nav-row button:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ---------- Quiz ---------- */
+  .quiz-q{font-size:34px;font-weight:800;text-align:center;margin:8px 0 6px}
+  .quiz-prompt{text-align:center;color:var(--ink-soft);font-size:14px;margin-bottom:20px}
+  .opt{
+    display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:16px 18px;margin-bottom:10px;font-size:16px;transition:.12s
+  }
+  .opt:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
+  .opt:disabled{cursor:default}
+  .opt.correct{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .opt.wrong{border-color:var(--wrong);background:var(--wrong-soft);color:var(--wrong)}
+  .quiz-foot{margin-top:8px;display:flex;gap:10px;align-items:center}
+  .quiz-foot .score{font-size:14px;color:var(--ink-soft)}
+  .quiz-foot button{margin-left:auto;background:var(--accent);color:#fff;border-radius:12px;padding:12px 22px;font-weight:700}
+
+  /* ---------- Result ---------- */
+  .result{text-align:center;padding:18px 0}
+  .result .big{font-size:52px;font-weight:800;color:var(--accent)}
+  .result .lbl{color:var(--ink-soft);margin-bottom:20px}
+  .result .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .result .row button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:14px 20px;font-weight:700}
+  .result .row button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .result .row button.warn{background:var(--wrong);color:#fff;border-color:var(--wrong)}
+
+  /* ---------- List view (vocab list / favorites / wrong) ---------- */
+  .list-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .list-head h2{font-size:20px;font-weight:800}
+  .list-head .count{font-size:13px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 12px}
+  .vrow{
+    display:flex;align-items:center;gap:14px;padding:14px 8px;border-bottom:1px solid var(--line)
+  }
+  .vrow:last-child{border-bottom:none}
+  .vrow .vw{font-size:18px;font-weight:700;min-width:120px}
+  .vrow .vp{font-size:12px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:2px 9px;flex:none}
+  .vrow .vm{color:var(--ink-soft);flex:1}
+  .vrow .vstar{font-size:22px;color:var(--line)}
+  .vrow .vstar.on{color:var(--gold)}
+  .empty-state{text-align:center;padding:48px 20px;color:var(--ink-soft)}
+  .empty-state .e-ic{font-size:40px;margin-bottom:10px}
+
+  footer{margin-top:30px;text-align:center;font-size:12px;color:var(--ink-soft)}
+
+  /* ---------- Login ---------- */
+  .login-wrap{max-width:420px;margin:24px auto 0}
+  .login-panel{padding:26px 24px;display:flex;flex-direction:column;gap:16px}
+  .fld{display:flex;flex-direction:column;gap:7px}
+  .fld span{font-size:13px;font-weight:700;color:var(--ink-soft)}
+  .fld input{
+    border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:17px;font-family:inherit;
+    background:var(--paper);transition:.15s;width:100%
+  }
+  .fld input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .login-go{background:var(--accent);color:#fff;border-radius:12px;padding:15px;font-weight:800;font-size:16px;transition:.15s}
+  .login-go:hover{background:#27604f}
+  .login-go:disabled{opacity:.6;cursor:wait}
+  .login-note{font-size:13px;text-align:center;min-height:18px;color:var(--wrong);font-weight:600}
+  .login-fine{font-size:12px;color:var(--ink-soft);text-align:center;line-height:1.5}
+  .who{font-size:13px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:8px}
+  .who .logout{font-size:12px;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-weight:400}
+  .sync-dot{width:7px;height:7px;border-radius:99px;background:#c9cf57;display:inline-block}
+  .sync-dot.ok{background:var(--accent)}
+  .sync-dot.busy{background:var(--gold);animation:pulse 1s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <span class="brand">능률VOCA · 단어 학습</span>
+    <nav class="crumb" id="crumb"></nav>
+    <span id="whoami" class="who hidden"></span>
+  </header>
+
+  <!-- ============ SCREEN: LOGIN ============ -->
+  <section id="screen-login">
+    <div class="login-wrap">
+      <h1 class="title" style="text-align:center">단어 학습 시작하기</h1>
+      <p class="subtitle" style="text-align:center">이름과 전화번호 뒷 4자리로 입장하세요.<br>같은 정보로 어느 기기에서든 내 즐겨찾기를 볼 수 있어요.</p>
+      <div class="panel login-panel">
+        <label class="fld">
+          <span>이름</span>
+          <input id="loginName" type="text" inputmode="text" placeholder="예: 김민수" autocomplete="off">
+        </label>
+        <label class="fld">
+          <span>전화번호 뒷 4자리</span>
+          <input id="loginPhone" type="tel" inputmode="numeric" maxlength="4" placeholder="예: 4821" autocomplete="off">
+        </label>
+        <button id="loginBtn" class="login-go">입장하기</button>
+        <p class="login-note" id="loginMsg"></p>
+        <p class="login-fine">전화번호 전체가 아닌 <b>뒷 4자리</b>만 입력하세요. 학습 기록 구분에만 쓰입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: HOME (grade select) ============ -->
+  <section id="screen-home">
+    <h1 class="title">오늘의 단어를 시작해요</h1>
+    <p class="subtitle">학년과 범위를 골라 플래시카드 · 퀴즈 · 단어장으로 공부하세요.</p>
+    <div class="grid" id="gradeGrid"></div>
+  </section>
+
+  <!-- ============ SCREEN: DAY select ============ -->
+  <section id="screen-day" class="hidden">
+    <h1 class="title" id="dayTitle">범위 선택</h1>
+    <p class="subtitle">전체로 한 번에, 또는 DAY별로 골라서 공부할 수 있어요.</p>
+    <div class="panel">
+      <div class="day-grid" id="dayGrid"></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: MODE select ============ -->
+  <section id="screen-mode" class="hidden">
+    <h1 class="title">학습 방법 선택</h1>
+    <div class="scope-banner">
+      <span id="scopeLabel"></span>
+      <span class="chg" id="changeScope">범위 변경</span>
+    </div>
+    <div class="mode-row">
+      <button class="mode-btn" data-mode="flash"><span class="ic">🃏</span><span><span class="m-title">플래시카드</span><br><span class="m-sub">카드를 넘기며 뜻 확인 · 즐겨찾기</span></span></button>
+      <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">4지선다로 뜻 맞히기</span></span></button>
+      <button class="mode-btn" data-mode="list"><span class="ic">📖</span><span><span class="m-title">단어장</span><br><span class="m-sub">전체 목록 보기 · 즐겨찾기 표시</span></span></button>
+      <button class="mode-btn" data-mode="fav"><span class="ic">⭐</span><span><span class="m-title">즐겨찾기</span><br><span class="m-sub">별표한 단어만 모아보기</span></span></button>
+      <button class="mode-btn" data-mode="wrongquiz" id="wrongBtn"><span class="ic">🔁</span><span><span class="m-title">틀린 단어 다시 풀기</span><br><span class="m-sub">퀴즈에서 틀린 단어만 모아 퀴즈</span></span></button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: FLASHCARD ============ -->
+  <section id="screen-flash" class="hidden">
+    <div class="stage">
+      <div class="progress"><i id="flashBar"></i></div>
+      <div class="counter" id="flashCounter"></div>
+      <div class="flashcard">
+        <div class="fc-inner" id="fcInner">
+          <div class="fc-face fc-front">
+            <span class="fav-star" id="favFront">★</span>
+            <div class="fc-word" id="fcWord"></div>
+            <div class="fc-pos" id="fcPos"></div>
+            <span class="fc-hint">카드를 눌러 뜻 보기</span>
+          </div>
+          <div class="fc-face fc-back">
+            <span class="fav-star" id="favBack">★</span>
+            <div class="fc-mean" id="fcMean"></div>
+            <span class="fc-hint">카드를 눌러 단어 보기</span>
+          </div>
+        </div>
+      </div>
+      <div class="nav-row">
+        <button id="flashPrev">← 이전</button>
+        <button id="flashShuffle">🔀 섞기</button>
+        <button id="flashNext" class="primary">다음 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: QUIZ ============ -->
+  <section id="screen-quiz" class="hidden">
+    <div class="stage">
+      <div class="progress"><i id="quizBar"></i></div>
+      <div class="counter" id="quizCounter"></div>
+      <div id="quizBody">
+        <div class="quiz-q" id="quizWord"></div>
+        <div class="quiz-prompt" id="quizPrompt">알맞은 뜻을 고르세요</div>
+        <div id="quizOpts"></div>
+        <div class="quiz-foot">
+          <span class="score" id="quizScore"></span>
+          <button id="quizNext" class="hidden">다음 →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: RESULT ============ -->
+  <section id="screen-result" class="hidden">
+    <div class="result">
+      <div class="big" id="resPct"></div>
+      <div class="lbl" id="resLbl"></div>
+      <div class="row">
+        <button class="primary" id="resRetry">다시 풀기</button>
+        <button class="warn hidden" id="resWrong">틀린 단어만 풀기</button>
+        <button id="resHome">학습 메뉴로</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: LIST (vocab / favorites) ============ -->
+  <section id="screen-list" class="hidden">
+    <div class="panel">
+      <div class="list-head">
+        <h2 id="listTitle"></h2>
+        <span class="count" id="listCount"></span>
+      </div>
+      <div id="listBody"></div>
+    </div>
+  </section>
+
+  <footer>능률VOCA 단어 학습 · 모바일에서도 잘 작동합니다</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===================== Supabase 설정 ===================== */
+const SUPABASE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4enNsZXJ5enBqYW9xY2l5cXZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDc4MDIsImV4cCI6MjA5NzA4MzgwMn0.mt91HfP2DV4Q9gZ_0Ts-B2P6fB3PmQlLJK2XcJeKzL4";
+let sb = null;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch(e){ console.warn("Supabase init 실패", e); }
+</script>
+<script>
+/* =====================================================================
+   단어 데이터 — 여기만 채우면 됩니다.
+   구조:
+   VOCAB_DATA = {
+     "고1상": {
+       days: {
+         "1": [ {w:"abandon", p:"동", m:"버리다, 포기하다"}, ... ],
+         "2": [ ... ],
+       }
+     },
+     "고1하": { ... }, ... "고3하": { ... }
+   }
+   - w: 단어(표제어)   p: 품사(동/명/형…)   m: 뜻
+   - days 의 키("1","2"…)는 DAY 번호 (문자열).
+   - 비어 있는 그룹은 홈 화면에서 "준비 중"으로 표시됩니다.
+   ===================================================================== */
+
+const GROUPS = ["고1상","고1하","고2상","고2하","고3상","고3하"];
+
+const VOCAB_DATA = {
+  "고1상": {
+    days: {
+      "1": [
+        {w:"abandon", p:"동", m:"버리다, 포기하다"},
+        {w:"ability", p:"명", m:"능력, 재능"},
+        {w:"absorb", p:"동", m:"흡수하다, 빨아들이다"},
+        {w:"abstract", p:"형", m:"추상적인"},
+        {w:"accurate", p:"형", m:"정확한, 정밀한"},
+        {w:"achieve", p:"동", m:"이루다, 성취하다"},
+        {w:"acquire", p:"동", m:"얻다, 습득하다"},
+        {w:"adapt", p:"동", m:"적응하다, 조정하다"}
+      ],
+      "2": [
+        {w:"benefit", p:"명", m:"이익, 혜택"},
+        {w:"bias", p:"명", m:"편견, 선입견"},
+        {w:"bound", p:"형", m:"~할 가능성이 큰, 묶인"},
+        {w:"brief", p:"형", m:"간단한, 짧은"},
+        {w:"broad", p:"형", m:"넓은, 광범위한"},
+        {w:"burden", p:"명", m:"부담, 짐"}
+      ]
+    }
+  },
+  "고1하": { days: {} },
+  "고2상": { days: {} },
+  "고2하": { days: {} },
+  "고3상": { days: {} },
+  "고3하": { days: {} }
+};
+
+/* ===================== 앱 로직 (수정 불필요) ===================== */
+
+// favorites: Set of "group|day|word"
+const favorites = new Set();
+// wrongStore: persistent wrong words across sessions, Set of word_id
+const wrongStore = new Set();
+
+const student = { key:null, name:null };
+
+const state = {
+  group:null, scopeDays:null, scopeLabel:"",
+  pool:[], idx:0, flipped:false,
+  quiz:{order:[], i:0, score:0, wrong:[], answered:false},
+};
+
+const $ = id => document.getElementById(id);
+const screens = ["login","home","day","mode","flash","quiz","result","list"];
+function show(name){
+  screens.forEach(s=>$("screen-"+s).classList.toggle("hidden", s!==name));
+  buildCrumb(name);
+  window.scrollTo(0,0);
+}
+
+function buildCrumb(name){
+  const c=$("crumb"); c.innerHTML="";
+  const add=(txt,fn)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=fn;c.appendChild(b);
+    const sep=document.createElement("span");sep.textContent="›";sep.style.color="var(--line)";c.appendChild(sep);};
+  if(name==="home"||name==="login")return;
+  add("홈",()=>show("home"));
+  if(state.group){
+    if(name==="day"){c.lastChild.remove();return;}
+    add(state.group,()=>openDayScreen(state.group));
+  }
+  if(["flash","quiz","result","list"].includes(name)){
+    add(state.scopeLabel||"학습",()=>show("mode"));
+  }
+  if(c.lastChild) c.lastChild.remove(); // drop trailing separator
+}
+
+function favKey(group,day,word){return group+"|"+day+"|"+word;}
+function isFav(item){return favorites.has(favKey(item.group,item.day,item.word||item.w));}
+
+// flatten a group's days into [{group,day,w,p,m,word}]
+function itemsForScope(group, days){
+  const g=VOCAB_DATA[group]; const out=[];
+  const dayKeys = days==="ALL" ? Object.keys(g.days) : days;
+  dayKeys.forEach(d=>{
+    (g.days[d]||[]).forEach(e=>out.push({group, day:d, w:e.w, p:e.p, m:e.m, word:e.w}));
+  });
+  return out;
+}
+function countGroup(group){
+  const g=VOCAB_DATA[group]; let n=0;
+  Object.values(g.days).forEach(arr=>n+=arr.length); return n;
+}
+
+/* ---------- HOME ---------- */
+function buildHome(){
+  const grid=$("gradeGrid"); grid.innerHTML="";
+  GROUPS.forEach(g=>{
+    const n=countGroup(g);
+    const card=document.createElement("button");
+    card.className="grade-card"+(n===0?" empty":"");
+    const dayCount=Object.keys(VOCAB_DATA[g].days).length;
+    card.innerHTML=`<span class="g-eyebrow">${g.slice(0,2)} · ${g.slice(2)}</span>
+      <span class="g-name">${g}</span>
+      <span class="g-meta">${n>0?`단어 ${n}개 · ${dayCount} DAY`:"단어 준비 중"}</span>`;
+    if(n>0) card.onclick=()=>openDayScreen(g);
+    grid.appendChild(card);
+  });
+}
+
+/* ---------- DAY screen ---------- */
+function openDayScreen(group){
+  state.group=group;
+  $("dayTitle").textContent=group+" · 범위 선택";
+  const grid=$("dayGrid"); grid.innerHTML="";
+  const total=countGroup(group);
+
+  const all=document.createElement("button");
+  all.className="day-chip all";
+  all.innerHTML=`<div class="d-num">전체 학습</div><div class="d-count">${total}개 단어</div>`;
+  all.onclick=()=>setScope(group,"ALL","전체");
+  grid.appendChild(all);
+
+  Object.keys(VOCAB_DATA[group].days)
+    .sort((a,b)=>(+a)-(+b))
+    .forEach(d=>{
+      const arr=VOCAB_DATA[group].days[d];
+      const chip=document.createElement("button");
+      chip.className="day-chip";
+      chip.innerHTML=`<div class="d-num">DAY ${d}</div><div class="d-count">${arr.length}개</div>`;
+      chip.onclick=()=>setScope(group,[d],"DAY "+d);
+      grid.appendChild(chip);
+    });
+  show("day");
+}
+
+function setScope(group,days,label){
+  state.group=group;
+  state.scopeDays=days;
+  state.scopeLabel=label;
+  $("scopeLabel").textContent=`${group} · ${label}`;
+  // disable wrong-quiz if no stored wrongs for this scope yet
+  show("mode");
+}
+
+/* ---------- MODE buttons ---------- */
+document.querySelectorAll(".mode-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const mode=btn.dataset.mode;
+    if(mode==="flash") startFlash();
+    else if(mode==="quiz") startQuiz(itemsForScope(state.group,state.scopeDays));
+    else if(mode==="list") openList("list");
+    else if(mode==="fav") openList("fav");
+    else if(mode==="wrongquiz") startWrongQuiz();
+  });
+});
+$("changeScope").onclick=()=>openDayScreen(state.group);
+
+/* ---------- FLASHCARD ---------- */
+function startFlash(){
+  state.pool=itemsForScope(state.group,state.scopeDays);
+  state.idx=0; state.flipped=false;
+  renderFlash(); show("flash");
+}
+function renderFlash(){
+  const it=state.pool[state.idx];
+  if(!it)return;
+  $("fcWord").textContent=it.w;
+  $("fcPos").textContent=it.p||"";
+  $("fcMean").textContent=it.m;
+  state.flipped=false;
+  $("fcInner").classList.remove("flipped");
+  const pct=((state.idx+1)/state.pool.length)*100;
+  $("flashBar").style.width=pct+"%";
+  $("flashCounter").textContent=`${state.idx+1} / ${state.pool.length}`;
+  $("flashPrev").disabled=state.idx===0;
+  $("flashNext").textContent=state.idx===state.pool.length-1?"처음으로":"다음 →";
+  updateFavStar();
+}
+function updateFavStar(){
+  const it=state.pool[state.idx]; const on=isFav(it);
+  $("favFront").classList.toggle("on",on);
+  $("favBack").classList.toggle("on",on);
+}
+$("fcInner").onclick=()=>{state.flipped=!state.flipped;$("fcInner").classList.toggle("flipped",state.flipped);};
+function toggleFav(e){
+  e.stopPropagation();
+  const it=state.pool[state.idx];
+  const k=favKey(it.group,it.day,it.w);
+  if(favorites.has(k)){favorites.delete(k); syncDelete("fav",k);}
+  else {favorites.add(k); syncUpsert("fav",it);}
+  updateFavStar();
+}
+$("favFront").onclick=toggleFav;
+$("favBack").onclick=toggleFav;
+$("flashNext").onclick=()=>{state.idx=(state.idx+1)%state.pool.length;renderFlash();};
+$("flashPrev").onclick=()=>{if(state.idx>0){state.idx--;renderFlash();}};
+$("flashShuffle").onclick=()=>{shuffle(state.pool);state.idx=0;renderFlash();};
+
+/* ---------- QUIZ ---------- */
+function startQuiz(pool){
+  if(pool.length<4){alert("퀴즈는 단어가 4개 이상일 때 풀 수 있어요.");return;}
+  state.pool=pool.slice();
+  state.quiz={order:shuffle(pool.slice()), i:0, score:0, wrong:[], answered:false};
+  renderQuiz(); show("quiz");
+}
+function renderQuiz(){
+  const q=state.quiz; const it=q.order[q.i];
+  $("quizWord").textContent=it.w;
+  $("quizCounter").textContent=`${q.i+1} / ${q.order.length}`;
+  $("quizBar").style.width=((q.i)/q.order.length)*100+"%";
+  $("quizScore").textContent=`점수 ${q.score} / ${q.order.length}`;
+  $("quizNext").classList.add("hidden");
+  q.answered=false;
+  // build 4 options from the full group pool
+  const allMeanings = itemsForScope(state.group,"ALL");
+  const distractors = shuffle(allMeanings.filter(x=>x.m!==it.m)).slice(0,3);
+  const opts=shuffle([it, ...distractors]);
+  const box=$("quizOpts"); box.innerHTML="";
+  opts.forEach(o=>{
+    const b=document.createElement("button");
+    b.className="opt"; b.textContent=o.m;
+    b.onclick=()=>answerQuiz(b,o,it);
+    box.appendChild(b);
+  });
+}
+function answerQuiz(btn,chosen,correct){
+  const q=state.quiz; if(q.answered)return; q.answered=true;
+  const all=$("quizOpts").querySelectorAll(".opt");
+  all.forEach(b=>{b.disabled=true; if(b.textContent===correct.m)b.classList.add("correct");});
+  if(chosen.m===correct.m){q.score++;}
+  else{
+    btn.classList.add("wrong"); q.wrong.push(correct);
+    const k=favKey(correct.group,correct.day,correct.w);
+    if(!wrongStore.has(k)){wrongStore.add(k); syncUpsert("wrong",correct);}
+  }
+  $("quizScore").textContent=`점수 ${q.score} / ${q.order.length}`;
+  $("quizNext").classList.remove("hidden");
+}
+$("quizNext").onclick=()=>{
+  const q=state.quiz;
+  if(q.i<q.order.length-1){q.i++;renderQuiz();}
+  else finishQuiz();
+};
+function finishQuiz(){
+  const q=state.quiz;
+  const pct=Math.round(q.score/q.order.length*100);
+  $("resPct").textContent=pct+"%";
+  $("resLbl").textContent=`${q.order.length}문제 중 ${q.score}개 정답`;
+  $("quizBar").style.width="100%";
+  const hasWrong=q.wrong.length>0;
+  $("resWrong").classList.toggle("hidden",!hasWrong);
+  state._lastQuizPool=state.pool;
+  state._lastWrong=q.wrong.slice();
+  show("result");
+}
+$("resRetry").onclick=()=>startQuiz(state._lastQuizPool);
+$("resWrong").onclick=()=>{ if(state._lastWrong&&state._lastWrong.length) startQuiz(dedupe(state._lastWrong)); };
+$("resHome").onclick=()=>show("mode");
+
+function startWrongQuiz(){
+  // pull from persistent store, resolve word_ids back to items in this group
+  const all=itemsForScope(state.group,"ALL");
+  const byKey={}; all.forEach(it=>byKey[favKey(it.group,it.day,it.w)]=it);
+  const items=[...wrongStore].map(k=>byKey[k]).filter(Boolean);
+  if(items.length===0){alert("저장된 틀린 단어가 없어요. 먼저 퀴즈를 풀어보세요!");return;}
+  startQuiz(items);
+}
+
+/* ---------- LIST / FAVORITES ---------- */
+function openList(kind){
+  let items, title;
+  if(kind==="fav"){
+    items=itemsForScope(state.group,state.scopeDays).filter(isFav);
+    title="⭐ 즐겨찾기";
+  }else{
+    items=itemsForScope(state.group,state.scopeDays);
+    title="📖 단어장";
+  }
+  $("listTitle").textContent=`${title} · ${state.scopeLabel}`;
+  $("listCount").textContent=`${items.length}개`;
+  const body=$("listBody"); body.innerHTML="";
+  if(items.length===0){
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">${kind==="fav"?"⭐":"📭"}</div>
+      ${kind==="fav"?"아직 즐겨찾기한 단어가 없어요.<br>플래시카드에서 별표를 눌러보세요.":"이 범위에 단어가 없습니다."}</div>`;
+  }else{
+    items.forEach(it=>{
+      const row=document.createElement("div"); row.className="vrow";
+      const star=document.createElement("button");
+      star.className="vstar"+(isFav(it)?" on":""); star.textContent="★";
+      star.onclick=()=>{
+        const k=favKey(it.group,it.day,it.w);
+        if(favorites.has(k)){favorites.delete(k); syncDelete("fav",k);}
+        else {favorites.add(k); syncUpsert("fav",it);}
+        star.classList.toggle("on");
+        if(kind==="fav")openList("fav");
+      };
+      row.innerHTML=`<span class="vw">${it.w}</span><span class="vp">${it.p||""}</span><span class="vm">${it.m}</span>`;
+      row.appendChild(star);
+      body.appendChild(row);
+    });
+  }
+  show("list");
+}
+
+/* ---------- LOGIN + SUPABASE SYNC ---------- */
+function setSync(stateName){ // 'ok' | 'busy' | ''
+  const d=document.querySelector(".sync-dot"); if(!d)return;
+  d.classList.remove("ok","busy"); if(stateName)d.classList.add(stateName);
+}
+function makeKey(name,phone){
+  return name.trim().replace(/\s+/g,"") + "_" + phone.trim();
+}
+async function doLogin(){
+  const name=$("loginName").value.trim();
+  const phone=$("loginPhone").value.trim();
+  const msg=$("loginMsg");
+  msg.textContent="";
+  if(!name){msg.textContent="이름을 입력해 주세요."; return;}
+  if(!/^\d{4}$/.test(phone)){msg.textContent="전화번호 뒷 4자리(숫자)를 입력해 주세요."; return;}
+
+  const btn=$("loginBtn"); btn.disabled=true; btn.textContent="불러오는 중…";
+  student.key=makeKey(name,phone);
+  student.name=name;
+
+  await loadProgress();   // pull this student's data from Supabase
+
+  // header identity
+  const who=$("whoami");
+  who.classList.remove("hidden");
+  who.innerHTML=`<span class="sync-dot ok"></span>${name} 님 <span class="logout">로그아웃</span>`;
+  who.querySelector(".logout").onclick=logout;
+
+  btn.disabled=false; btn.textContent="입장하기";
+  buildHome();
+  show("home");
+}
+function logout(){
+  favorites.clear(); wrongStore.clear();
+  student.key=null; student.name=null;
+  $("whoami").classList.add("hidden");
+  $("loginName").value=""; $("loginPhone").value="";
+  show("login");
+}
+async function loadProgress(){
+  if(!sb||!student.key)return;
+  try{
+    const {data,error}=await sb.from("progress")
+      .select("kind,word_id").eq("student_key",student.key);
+    if(error)throw error;
+    favorites.clear(); wrongStore.clear();
+    (data||[]).forEach(r=>{
+      if(r.kind==="fav") favorites.add(r.word_id);
+      else if(r.kind==="wrong") wrongStore.add(r.word_id);
+    });
+  }catch(e){ console.warn("loadProgress 실패", e); }
+}
+async function syncUpsert(kind,item){
+  if(!sb||!student.key)return;
+  setSync("busy");
+  try{
+    await sb.from("progress").upsert({
+      student_key:student.key, student_name:student.name,
+      kind, word_id:favKey(item.group,item.day,item.w||item.word),
+      word:item.w||item.word, grp:item.group, day:item.day,
+      updated_at:new Date().toISOString()
+    }, {onConflict:"student_key,kind,word_id"});
+  }catch(e){ console.warn("upsert 실패", e); }
+  setSync("ok");
+}
+async function syncDelete(kind,wordId){
+  if(!sb||!student.key)return;
+  setSync("busy");
+  try{
+    await sb.from("progress").delete()
+      .eq("student_key",student.key).eq("kind",kind).eq("word_id",wordId);
+  }catch(e){ console.warn("delete 실패", e); }
+  setSync("ok");
+}
+$("loginBtn").onclick=doLogin;
+$("loginPhone").addEventListener("keydown",e=>{ if(e.key==="Enter")doLogin(); });
+$("loginName").addEventListener("keydown",e=>{ if(e.key==="Enter")$("loginPhone").focus(); });
+
+/* ---------- helpers ---------- */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function dedupe(arr){const seen=new Set();return arr.filter(x=>{const k=x.group+"|"+x.day+"|"+x.w;if(seen.has(k))return false;seen.add(k);return true;});}
+
+/* ---------- init ---------- */
+show("login");
+$("loginName").focus();
+</script>
+</body>
+</html>
