@@ -69,6 +69,22 @@
   .day-chip .d-count{font-size:11px;color:var(--ink-soft);font-weight:400}
   .day-chip.all{background:var(--accent);color:#fff;border-color:var(--accent);grid-column:1/-1}
   .day-chip.all:hover{background:#27604f}
+  .day-chip.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-soft)}
+  .day-chip.on .d-num{color:var(--accent)}
+  .day-chip .d-tick{display:none;position:absolute;top:5px;right:7px;font-size:12px;color:var(--accent);font-weight:800}
+  .day-chip{position:relative}
+  .day-chip.on .d-tick{display:block}
+
+  .pick-bar{
+    position:sticky;bottom:12px;margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:12px 14px;
+    box-shadow:0 8px 24px rgba(28,39,51,.14)
+  }
+  .pick-bar .pk-txt{font-size:14px;font-weight:700;color:var(--accent);flex:1;min-width:150px}
+  .pick-bar button{border-radius:10px;padding:11px 18px;font-weight:800;font-size:14px}
+  .pick-bar .pk-go{background:var(--accent);color:#fff}
+  .pick-bar .pk-go:hover{background:#27604f}
+  .pick-bar .pk-clear{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-weight:700}
 
   /* ---------- Mode menu ---------- */
   .mode-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
@@ -266,9 +282,14 @@
   <!-- ============ SCREEN: DAY select ============ -->
   <section id="screen-day" class="hidden">
     <h1 class="title" id="dayTitle">범위 선택</h1>
-    <p class="subtitle">전체로 한 번에, 또는 <span id="unitWord">챕터</span>별로 골라서 공부할 수 있어요.</p>
+    <p class="subtitle">전체로 한 번에, 또는 <span id="unitWord">챕터</span>를 <b>여러 개 골라서</b> 함께 공부·시험 볼 수 있어요.</p>
     <div class="panel">
       <div class="day-grid" id="dayGrid"></div>
+      <div class="pick-bar hidden" id="pickBar">
+        <span class="pk-txt" id="pickTxt"></span>
+        <button class="pk-clear" id="pickClear">선택 해제</button>
+        <button class="pk-go" id="pickGo">선택한 범위로 공부하기</button>
+      </div>
     </div>
   </section>
 
@@ -1074,7 +1095,7 @@ const ALIAS_OWNER = "__ALIAS__";
 const ALIAS_AI_OWNER = "__ALIAS_AI__";
 
 const state = {
-  group:null, scopeDays:null, scopeLabel:"",
+  group:null, scopeDays:null, scopeLabel:"", pick:new Set(),
   pool:[], idx:0, flipped:false,
   quiz:{order:[], i:0, score:0, wrong:[], answered:false},
 };
@@ -1158,16 +1179,49 @@ function openDayScreen(group){
   all.onclick=()=>setScope(group,"ALL","전체");
   grid.appendChild(all);
 
+  state.pick=new Set();
   dayKeys(group).forEach(d=>{
     const arr=VOCAB_DATA[group].days[d];
     const chip=document.createElement("button");
     chip.className="day-chip";
-    chip.innerHTML=`<div class="d-num">${esc(dayLabel(group,d))}</div><div class="d-count">${arr.length}개</div>`;
-    chip.onclick=()=>setScope(group,[d],dayLabel(group,d));
+    chip.innerHTML=`<span class="d-tick">✓</span>
+      <div class="d-num">${esc(dayLabel(group,d))}</div><div class="d-count">${arr.length}개</div>`;
+    chip.onclick=()=>togglePick(group,d,chip);
     grid.appendChild(chip);
   });
+  renderPickBar(group);
   show("day");
 }
+
+/* 여러 챕터를 골라 한 번에 공부·시험 */
+function togglePick(group,d,chip){
+  if(state.pick.has(d)) state.pick.delete(d); else state.pick.add(d);
+  chip.classList.toggle("on",state.pick.has(d));
+  renderPickBar(group);
+}
+function pickLabel(group){
+  const ks=dayKeys(group).filter(d=>state.pick.has(d));   // 화면 순서대로
+  if(ks.length===1) return dayLabel(group,ks[0]);
+  return `${dayLabel(group,ks[0])} 외 ${ks.length-1}개`;
+}
+function renderPickBar(group){
+  const bar=$("pickBar");
+  const ks=dayKeys(group).filter(d=>state.pick.has(d));
+  if(!ks.length){ bar.classList.add("hidden"); return; }
+  const n=ks.reduce((a,d)=>a+VOCAB_DATA[group].days[d].length,0);
+  $("pickTxt").textContent=`${esc(unitName(group))} ${ks.length}개 선택 · 단어 ${n}개`;
+  bar.classList.remove("hidden");
+}
+$("pickClear").onclick=()=>{
+  state.pick=new Set();
+  document.querySelectorAll("#dayGrid .day-chip.on").forEach(c=>c.classList.remove("on"));
+  renderPickBar(state.group);
+};
+$("pickGo").onclick=()=>{
+  const ks=dayKeys(state.group).filter(d=>state.pick.has(d));
+  if(!ks.length)return;
+  setScope(state.group, ks, pickLabel(state.group));
+};
 
 function setScope(group,days,label){
   state.group=group;
