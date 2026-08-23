@@ -1390,22 +1390,31 @@ function shareSet(A,B){
    "Address(주소x)" 처럼 괄호 안에 'x' 를 붙여 두면 그 뜻은 정답으로 인정하지 않는다.
    여러 개면 쉼표로: "Address(주소x, 연설x)"                                  */
 const _wordCache=new Map();
+/* 괄호 표기: "address(주소x)" = 그 뜻 제외, "address(v)" = 그 품사만 인정.
+   함께 쓸 수도 있다: "address(v, 주소x)" */
+const POS_MARK={v:"동",verb:"동","동":"동",n:"명",noun:"명","명":"명",
+                a:"형",adj:"형","형":"형",ad:"부",adv:"부","부":"부"};
 function parseWord(w){
   const raw=String(w||"").trim();
   if(_wordCache.has(raw)) return _wordCache.get(raw);
-  let out={base:raw, no:[]};
+  let out={base:raw, no:[], pos:""};
   const m=raw.match(/^(.*?)\s*[（(]([^)）]*)[)）]\s*$/);
   if(m){
-    const no=[];
+    const no=[]; let pos="";
     m[2].split(/[,，·/]/).map(x=>x.trim()).filter(Boolean).forEach(part=>{
       const hit=part.match(/^(.*?)\s*[xX✗×]$/);
-      if(hit && hit[1].trim()) no.push(hit[1].trim());
+      if(hit && hit[1].trim()){ no.push(hit[1].trim()); return; }
+      const pm=POS_MARK[part.toLowerCase()];
+      if(pm) pos=pm;
     });
-    if(no.length) out={base:(m[1].trim()||raw), no};
+    if(no.length||pos) out={base:(m[1].trim()||raw), no, pos};
   }
   _wordCache.set(raw,out);
   return out;
 }
+/* 이 단어에 지정된 품사. p 필드 또는 (v) 표기 — 지정되면 그 품사만 인정한다. */
+function itemPos(item){ return item.p || parseWord(item.w).pos || ""; }
+function posLocked(item){ return !!itemPos(item); }
 
 /* ---- 품사 판별 ----
    뜻이 맞아도 품사가 다르면 오답이다.
@@ -1466,7 +1475,8 @@ function posHint(p){
    뜻이 여럿이면 그중 하나라도 맞으면 통과시킨다. */
 const _needCache=new Map();
 function neededPos(item){
-  if(POS_NEED[item.p]) return new Set([POS_NEED[item.p]]);
+  const lock=itemPos(item);
+  if(POS_NEED[lock]) return new Set([POS_NEED[lock]]);
   const key=answerText(item);
   if(_needCache.has(key)) return _needCache.get(key);
   const need=new Set();
@@ -1519,7 +1529,8 @@ function posOk(answer,item){
    뜻에서 유추한 경우에는 이름 대신 모범답안의 형태를 보여 준다
    ("요약하자면" 을 "명사" 라고 부르면 오히려 헷갈린다). */
 function neededPosLabel(item){
-  return POS_NEED[item.p] ? posLabel(item.p) : "";
+  const lock=itemPos(item);
+  return POS_NEED[lock] ? posLabel(lock) : "";
 }
 
 /* ---- 동의어 사전 (자주 나오는 뜻 묶음) ---- */
@@ -2071,12 +2082,17 @@ function gradeAnswer(answer, item, others){
   // 답의 품사가 교재의 뜻과 다른가 — 점수와 무관하게 기록해서 AI 에게 알린다
   const posBad = mine.score<1 && !posOk(answer,item);
 
-  if(mine.score>=GRAY && posBad)
+  if(mine.score>=GRAY && posBad){
+    // 선생님이 품사를 지정한 단어("address(v)" 또는 p 필드)는 그 품사만 인정.
+    // 사전에 다른 품사가 있어도 구제하지 않으므로 AI 를 부르지 않는다.
+    if(posLocked(item))
+      return {verdict:"pos", score:mine.score, matched:mine.matched, need:itemPos(item)};
     // posOnly: 뜻은 통하는데 품사만 다르다는 뜻.
     // 그 영어 단어가 사전에서 그 품사로도 쓰이는지 AI 에게 물어본다
     // (demand 는 교재에 "요구"(명사)만 있어도 "요구하다"(동사) 가 사전에 있다).
     // AI 를 쓸 수 없으면 지금처럼 오답으로 둔다.
-    return {verdict:"pos", posOnly:true, score:mine.score, matched:mine.matched, need:item.p};
+    return {verdict:"pos", posOnly:true, score:mine.score, matched:mine.matched, need:itemPos(item)};
+  }
   let bestOther=0, otherItem=null;
   (others||[]).forEach(o=>{
     if(o.w===item.w || o.m===item.m) return;
@@ -2212,8 +2228,8 @@ async function judgeWithAI(item,answer,formMismatch){
         "apikey":SUPABASE_ANON
       },
       body:JSON.stringify({
-        word:parseWord(item.w).base, pos:item.p||"", meaning:item.m,
-        alt:item.alt||"", exclude:parseWord(item.w).no.join(", "),
+        word:parseWord(item.w).base, pos:itemPos(item), pos_locked:posLocked(item),
+        meaning:item.m, alt:item.alt||"", exclude:parseWord(item.w).no.join(", "),
         answer:String(answer).trim(), form_mismatch:!!formMismatch
       }),
       signal:ctl.signal
