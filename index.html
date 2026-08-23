@@ -381,6 +381,11 @@ try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch(e){ conso
    규칙·사전으로 "정답"이 나온 답은 여기까지 오지 않습니다.
    "비슷함 / 오답"으로 나온 것만 AI에게 한 번 더 물어봅니다.
    주소를 비워 두면 AI 채점 없이 지금까지의 규칙만으로 채점합니다.        */
+/* 명단에 등록된 학생만 입장시킬지 (admin.html → 명단 관리 에서 학생을 등록합니다)
+   학생을 한 명이라도 등록하면 자동으로 명단 확인이 켜집니다. 명단이 비어 있으면 누구나 입장.
+   true 로 바꾸면 서버 연결이 끊겼을 때도 입장을 막습니다 (기본값 false: 수업이 끊기지 않도록). */
+const STRICT_ROSTER = false;
+
 const AI_JUDGE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning";
 // ↑ 함수를 아직 배포하지 않았다면 호출이 실패하고 규칙 채점으로 넘어갑니다 (수업에 지장 없음).
 //   AI 채점을 아예 끄려면 "" 로 비워 두세요.
@@ -1557,6 +1562,23 @@ function setSync(stateName){ // 'ok' | 'busy' | ''
 function makeKey(name,phone){
   return name.trim().replace(/\s+/g,"") + "_" + phone.trim();
 }
+/* 명단 확인 — 선생님이 등록한 학생인지 서버에 물어본다.
+   명단이 비어 있으면(등록 전) 예전처럼 누구나 입장할 수 있다. */
+async function verifyStudent(name,phone){
+  const fallback={ok:!STRICT_ROSTER, student_key:makeKey(name,phone), name, reason:"offline"};
+  if(!sb) return fallback;
+  try{
+    const {data,error}=await sb.rpc("student_login",{p_name:name,p_phone:phone});
+    if(error) throw error;
+    const r=Array.isArray(data)?data[0]:data;
+    if(!r||typeof r.ok!=="boolean") throw new Error("빈 응답");
+    return r;
+  }catch(e){
+    console.warn("명단 확인 실패", e);
+    return fallback;   // 서버가 죽어도 수업은 이어지게 (STRICT_ROSTER 로 조절)
+  }
+}
+
 async function doLogin(){
   const name=$("loginName").value.trim();
   const phone=$("loginPhone").value.trim();
@@ -1565,16 +1587,28 @@ async function doLogin(){
   if(!name){msg.textContent="이름을 입력해 주세요."; return;}
   if(!/^\d{4}$/.test(phone)){msg.textContent="전화번호 뒷 4자리(숫자)를 입력해 주세요."; return;}
 
-  const btn=$("loginBtn"); btn.disabled=true; btn.textContent="불러오는 중…";
-  student.key=makeKey(name,phone);
-  student.name=name;
+  const btn=$("loginBtn"); btn.disabled=true; btn.textContent="확인 중…";
+
+  const check=await verifyStudent(name,phone);
+  if(!check.ok){
+    msg.innerHTML = check.reason==="not_listed"
+      ? "명단에 없어요. 이름과 번호를 다시 확인해 주세요.<br>계속 안 되면 선생님께 말씀해 주세요."
+      : "이름과 전화번호 뒷 4자리를 확인해 주세요.";
+    btn.disabled=false; btn.textContent="입장하기";
+    $("loginName").focus();
+    return;
+  }
+
+  btn.textContent="불러오는 중…";
+  student.key=check.student_key||makeKey(name,phone);
+  student.name=check.name||name;
 
   await loadProgress();   // pull this student's data from Supabase
 
   // header identity
   const who=$("whoami");
   who.classList.remove("hidden");
-  who.innerHTML=`<span class="sync-dot ok"></span>${name} 님 <span class="logout">로그아웃</span>`;
+  who.innerHTML=`<span class="sync-dot ok"></span>${student.name} 님 <span class="logout">로그아웃</span>`;
   who.querySelector(".logout").onclick=logout;
 
   btn.disabled=false; btn.textContent="입장하기";
