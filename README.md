@@ -93,7 +93,23 @@ Supabase `progress` 테이블을 그대로 쓰며 스키마 변경은 필요 없
 
 API 키는 브라우저에 두면 그대로 노출되므로, Supabase Edge Function 안에 숨깁니다.
 
-### 배포 방법 ① 브라우저만으로 (터미널 없이)
+### 현재 상태
+
+`judge-meaning` 함수는 **이미 배포되어 있습니다** (Vocab-study 프로젝트, `verify_jwt` 켜짐).
+`index.html` 의 `AI_JUDGE_URL` 도 채워져 있습니다.
+
+**남은 일은 하나뿐입니다 — `GEMINI_API_KEY` 등록.**
+Supabase 대시보드 → 왼쪽 메뉴 **Edge Functions** → **Secrets** 탭 → `Add new secret`
+
+| Name | `GEMINI_API_KEY` |
+|---|---|
+| Value | AI Studio 에서 발급받은 키 |
+
+등록한 뒤 `admin.html` → 관리자 번호 → 명단 화면의 **[🔌 연결 확인]** 을 누르면 됩니다.
+
+함수 코드를 고쳤을 때만 아래 재배포 절차가 필요합니다.
+
+### 재배포 ① 브라우저만으로 (터미널 없이)
 
 > **API 키는 절대 `index.html` 이나 저장소에 넣지 마세요.**
 > `index.html` 에 넣으면 학생이 소스 보기로 그대로 가져갈 수 있고,
@@ -113,11 +129,11 @@ Supabase 대시보드 → 왼쪽 메뉴 **Edge Functions** → **Secrets** 탭 �
 
 **2단계 — 함수 배포**
 
-**Edge Functions** → `Deploy a new function` → **Via Editor**
+**Edge Functions** → `judge-meaning` → `Edit function` (새로 만드는 경우 `Deploy a new function` → **Via Editor**)
 
-- 함수 이름: `judge-meaning` (반드시 이 이름이어야 합니다)
-- 편집기 내용을 전부 지우고, 이 저장소의
-  `supabase/functions/judge-meaning/index.ts` 내용을 통째로 붙여넣기
+- 함수 이름은 `judge-meaning` 이어야 합니다 (`index.html` 의 주소와 맞춰야 함).
+- **파일을 새로 추가하지 마세요.** 이미 있는 `index.ts` 의 내용을 전부 지우고,
+  이 저장소의 `supabase/functions/judge-meaning/index.ts` 를 통째로 붙여넣습니다.
 - `Deploy function`
 
 **3단계 — 확인**
@@ -130,7 +146,7 @@ Supabase 대시보드 → 왼쪽 메뉴 **Edge Functions** → **Secrets** 탭 �
 
 `index.html` 의 함수 주소는 이미 채워져 있으므로 따로 고칠 것이 없습니다.
 
-### 배포 방법 ② 터미널
+### 재배포 ② 터미널
 
 Supabase CLI 를 쓰신다면 한 줄로 끝납니다.
 
@@ -219,6 +235,25 @@ Gemini 2.5 Flash-Lite 기준 입력 $0.10 / 출력 $0.40 per 1M tokens.
 - 함수는 채점 전용입니다. 프롬프트가 고정이고 출력이 `{verdict, reason}` JSON 스키마로
   묶여 있으며 최대 출력이 120 토큰이라, 일반 챗봇처럼 악용하기 어렵습니다.
 - 답안 80자, 뜻 300자로 길이를 자릅니다.
+
+## 데이터베이스 메모
+
+`progress` 테이블은 이미 아래 조건을 만족하므로 스키마 변경 없이 동작합니다.
+
+- `UNIQUE (student_key, kind, word_id)` — 인정 답안 저장(upsert)에 필요
+- `kind` 에 CHECK 제약이 없어 `alias` / `alias_req` / `alias_ai` 가 그대로 들어감
+- 모든 열이 `text` 라 길이 제한 문제 없음
+
+한 가지 선택 사항: RLS 에 **UPDATE 정책이 없습니다.** SELECT · INSERT · DELETE 만 있어서,
+이미 있는 행을 다시 upsert 할 때(같은 답을 두 학생이 동시에 인정받는 경우 등)
+조용히 실패합니다. 앱이 메모리에서 중복을 걸러 주기 때문에 실제로 문제가 되는 일은
+드물지만, 깔끔하게 하려면 **SQL Editor** 에서 한 줄 실행하면 됩니다.
+
+```sql
+create policy "anon can update" on public.progress for update using (true) with check (true);
+```
+
+(DELETE 와 INSERT 가 이미 열려 있으므로 보안 수준이 달라지지는 않습니다.)
 
 ## 단어 추가
 
