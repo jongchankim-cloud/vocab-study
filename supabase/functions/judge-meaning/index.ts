@@ -37,46 +37,55 @@ const json = (body: unknown, status = 200) =>
   });
 
 /** 학생 답안이 표준 답안과 같은 뜻인지 묻는 프롬프트 */
-function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string, formMismatch: boolean) {
+function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string, formMismatch: boolean, posLocked: boolean) {
   return `너는 영어 단어 시험의 채점자다. 학생이 쓴 우리말 뜻이 정답인지 판단해라.
-학원 시험이므로 관대함보다 정확함이 중요하다. 확신이 없으면 correct 를 주지 마라.
+(교재의 뜻과 글자까지 같은 답은 이미 정답 처리되어 여기 오지 않는다. 너는 교재에 없는
+표현을 판단한다.)
 
-영어 단어: ${w}${pos ? ` (${pos})` : ""}
+영어 단어: ${w}${pos ? `\n지정된 품사: ${pos}${posLocked ? " — 이 품사의 뜻만 정답으로 인정한다" : ""}` : ""}
 교재의 뜻: ${meaning}${alt ? `\n추가로 인정된 답안: ${alt}` : ""}${exclude ? `\n인정하지 않는 뜻: ${exclude}` : ""}
-학생 답안: ${answer}${formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 2단계를 특히 엄격하게 판단해라." : ""}
+학생 답안: ${answer}${formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 규칙 2를 특히 엄격하게 적용해라." : ""}
 
-아래 순서대로 판단해라. 앞 단계에서 판정이 나면 뒤 단계는 보지 않는다.
+채점 규칙 — 번호 순서대로 적용하고, 앞 규칙에서 판정이 나면 뒤는 보지 않는다.
 
-[1단계 — 제외된 뜻]
-"인정하지 않는 뜻" 과 같은 뜻이면, 사전에 있는 뜻이어도 wrong.
-문제에서 그 뜻은 빼고 답하라고 지정한 것이다.
+[규칙 1 — 제외·지정]
+"인정하지 않는 뜻" 과 같은 뜻이면 wrong. 문제가 그 뜻은 빼라고 지정한 것이다.
+"지정된 품사" 가 있으면 그 품사의 뜻만 정답 후보다. 다른 품사면 사전에 있어도 pos.
 
-[2단계 — 품사·형태]
-학생 답안이 나타내는 품사가, 그 영어 단어가 사전에서 실제로 가지는 품사인지 본다.
-· 사전에 그 품사로 그 뜻이 실려 있다 → 3단계로.
-  (예: demand 는 교재에 "요구"(명사) 만 있어도 사전에 동사 "요구하다" 가 있다 → 통과)
-· 사전에 없는 품사·형태다 → 뜻이 아무리 비슷해도 pos. 의미가 통한다는 이유로
-  correct 를 주면 안 된다.
+[규칙 2 — 품사는 엄격하게]
+· 답에 조사가 붙으면 pos. 뜻이 "농구" 인데 "농구의", "농구와" 라고 쓰면 pos.
+· 품사가 지정되지 않았다면, 교재의 품사가 아니어도 **그 단어가 사전에서 실제로
+  가지는 품사의 뜻**이면 정답 후보다.
+  예: address — "주소", "연설하다", "다루다", "말을 걸다" 모두 correct.
+· 그 단어가 사전에서 가지지 않는 품사·형태는 pos. 의미가 통해도 안 된다.
   예: acquire 는 동사뿐 → 명사형 "획득" 은 pos
-  예: in summary 는 부사구 → 명사 "요약" 은 pos
   예: atom 은 명사뿐 → "원자이다" 는 pos
+  예: in summary 는 부사구 → 명사 "요약" 은 pos
   예: less than 은 "~ 미만의" 라는 관형 표현 → 서술형 "~보다 작다" 는 pos
 품사 문제는 correct 아니면 pos 다. close 를 쓰지 마라.
 
-[3단계 — 뜻]
-· correct : 교재의 뜻(또는 추가 인정 답안)과 실질적으로 같다.
-            같은 뜻의 다른 낱말(예: "나중에"/"추후에"), 같은 품사 안에서의 활용형,
-            더 풀어 쓴 설명을 포함한다.
-            또는 교재에 없어도 **사전에 실려 있는 그 단어의 다른 뜻**이다.
-            지엽적인 뜻이라도 사전에 있으면 인정한다.
-            (예: address 에 "연설하다" — 교재에 "다루다" 만 있어도 correct)
-· close   : 뜻이 겹치기는 하지만 범위가 지나치게 넓거나 좁아 애매하다.
-· wrong   : 그 단어의 뜻이 아니다. 혼동하기 쉬운 다른 영어 단어의 뜻
-            (예: subsequently 에 "따라서")은 반드시 wrong.
+[규칙 3 — 같은 뜻의 다른 표현은 인정]
+교재의 뜻과 표현이 달라도 같은 의미면 correct. 사전마다 다른 번역, 유의어,
+더 풀어 쓴 설명을 모두 포함한다.
+예: run(달리다) — "뛰다", "뜀박질하다", "내달리다", "질주하다", "냅다 뛰다" 모두 correct.
+
+[규칙 4 — 사전·통용 뜻은 인정]
+교재에 없어도 사전에 실려 있거나 일반적으로 통용되는 그 단어의 뜻이면 correct.
+지엽적인 뜻이라도 인정한다.
+예: offer(제의[제안]하다) — "할인", "(금전적) 제의", "제의한 액수", "제의", "제안",
+    "(하느님께) 바치다", "내놓다" 모두 correct.
+
+[규칙 5 — 다른 단어의 뜻은 오답]
+그 단어의 뜻이 아니면 wrong. 특히 혼동하기 쉬운 다른 영어 단어의 뜻을 적은 경우
+(예: subsequently 에 "따라서" — consequently 의 뜻)는 반드시 wrong.
+
+close 는 뜻이 겹치지만 범위가 지나치게 넓거나 좁아 확신이 서지 않을 때만 쓴다.
+확신이 없으면 correct 를 주지 마라.
 
 reason 은 학생에게 그대로 보여 줄 한국어 한 문장, 35자 이내, 존댓말.
 correct 면 근거를(예: "동사로도 쓰여요"), pos 면 어떤 형태로 써야 하는지 적어라.`;
 }
+
 
 
 const SCHEMA = {
@@ -184,7 +193,7 @@ Deno.serve(async (req) => {
   // 배포 직후 키가 살아 있는지 확인하는 자체 점검
   //   curl -H "Authorization: Bearer <anon key>" ".../judge-meaning?selftest=1"
   if (req.method === "GET" && new URL(req.url).searchParams.has("selftest")) {
-    const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에", "", false));
+    const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에", "", false, false));
     if ("ok" in r) {
       return json({
         ok: true,
@@ -215,12 +224,13 @@ Deno.serve(async (req) => {
   const exclude = str(payload.exclude, 200);
   const answer = str(payload.answer, 80);
   const formMismatch = payload.form_mismatch === true || payload.form_mismatch === "true";
+  const posLocked = payload.pos_locked === true || payload.pos_locked === "true";
 
   // 단어 채점 이외의 용도로 쓰이지 않도록 최소한의 형태 검사
   if (!word || !meaning || !answer) return json({ error: "word, meaning, answer 필요" }, 400);
   if (!/[가-힣]/.test(answer)) return json({ verdict: "wrong", reason: "한국어 뜻이 아닙니다." });
 
-  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch));
+  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch, posLocked));
   if ("ok" in r) return json(r.ok);
   return json({ error: "판정 실패", detail: r.err }, 502);
 });
