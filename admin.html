@@ -166,16 +166,17 @@
   <!-- ROSTER -->
   <section id="screen-roster" class="hidden">
     <span class="back" id="rosterBack">← 명단으로</span>
-    <h1 class="title">학생 명단 관리</h1>
-    <p class="subtitle">여기에 등록된 학생만 학습 사이트에 입장할 수 있습니다.</p>
+    <h1 class="title">입장 허용 명단</h1>
+    <p class="subtitle">입장 확인은 <b>성적 사이트(score-system)의 학생 명단</b>을 그대로 씁니다.<br>
+      여기에는 성적 사이트에 없는 학생만 따로 넣어 주세요.</p>
 
     <div id="rosterBanner" style="border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.6"></div>
 
     <div class="panel" style="margin-bottom:16px">
       <div class="bar">
         <input class="search" id="rName" placeholder="이름 (예: 김채현)" style="max-width:200px">
-        <input class="search" id="rPhone" placeholder="뒷 4자리" inputmode="numeric" maxlength="4" style="max-width:120px">
-        <button class="refresh" id="rAdd" style="background:var(--accent);color:#fff;border-color:var(--accent)">+ 학생 추가</button>
+        <input class="search" id="rPhone" placeholder="PIN 4자리" inputmode="numeric" maxlength="4" style="max-width:130px">
+        <button class="refresh" id="rAdd" style="background:var(--accent);color:#fff;border-color:var(--accent)">+ 예외 추가</button>
         <button class="refresh" id="rSeed">기존 학습 기록에서 가져오기</button>
       </div>
       <p class="note" id="rMsg" style="margin:0"></p>
@@ -183,7 +184,7 @@
 
     <div class="panel">
       <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <h2 style="font-size:18px;font-weight:800">등록된 학생</h2>
+        <h2 style="font-size:18px;font-weight:800">따로 허용한 학생</h2>
         <span class="count" id="rCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
       </div>
       <div id="rosterBody"></div>
@@ -513,26 +514,24 @@ async function loadRoster(){
 function renderRoster(){
   $("rCount").textContent=`${ROSTER.length}명`;
   const b=$("rosterBanner");
-  if(ROSTER.length===0){
-    b.style.border="1px solid var(--gold)"; b.style.background="#fbf4e4";
-    b.innerHTML="<b>⚠ 지금은 누구나 입장할 수 있습니다.</b><br>명단이 비어 있어서 아무 이름이나 넣어도 들어가집니다. 학생을 <b>한 명이라도 추가하면</b> 그때부터 명단에 있는 학생만 입장할 수 있습니다.";
-  }else{
-    b.style.border="1px solid var(--accent)"; b.style.background="var(--accent-soft)";
-    b.innerHTML=`<b>✓ 명단 확인이 켜져 있습니다.</b><br>등록된 ${ROSTER.length}명만 입장할 수 있고, 이름이나 번호가 다르면 막힙니다.`;
-  }
+  b.style.border="1px solid var(--accent)"; b.style.background="var(--accent-soft)";
+  b.innerHTML=`<b>✓ 성적 사이트 명단으로 입장을 확인합니다.</b><br>
+    학생이 <b>이름 + PIN(학부모님 연락처 뒷 4자리)</b>을 성적 사이트와 똑같이 넣어야 들어옵니다.
+    성적 사이트에서 학생을 추가하거나 지우면 여기에도 바로 반영됩니다.
+    ${ROSTER.length ? `<br>그 밖에 아래 <b>${ROSTER.length}명</b>을 따로 허용하고 있습니다.` : ""}`;
   const body=$("rosterBody"); body.innerHTML="";
   if(ROSTER.length===0){
-    body.innerHTML=`<div class="empty-state"><div class="e-ic">👥</div>등록된 학생이 없어요.<br>위에서 추가하거나 [기존 학습 기록에서 가져오기] 를 눌러 보세요.</div>`;
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">👥</div>따로 허용한 학생이 없어요.<br>성적 사이트 명단만으로 입장을 확인하고 있습니다.</div>`;
     return;
   }
   ROSTER.forEach(st=>{
     const r=document.createElement("div"); r.className="arow";
     r.innerHTML=`<span class="aw">${esc(st.name)}</span>
-      <span class="aa">뒷 4자리 <b>${esc(st.phone4)}</b>
+      <span class="aa">PIN <b>${esc(st.phone4)}</b>
         ${st.note?`<small>${esc(st.note)}</small>`:""}</span>`;
     const del=document.createElement("button"); del.className="abtn"; del.textContent="삭제";
     del.onclick=async()=>{
-      if(!confirm(`${st.name} 학생을 명단에서 지울까요?\n(학습 기록은 그대로 남고, 입장만 막힙니다)`))return;
+      if(!confirm(`${st.name} 학생의 예외 허용을 지울까요?\n(학습 기록은 그대로 남습니다. 성적 사이트 명단에 있으면 계속 입장됩니다)`))return;
       del.disabled=true;
       try{
         const {error}=await sb.rpc("roster_remove",{p_key:st.student_key});
@@ -561,7 +560,7 @@ $("rAdd").onclick=async()=>{
 $("rPhone").addEventListener("keydown",e=>{ if(e.key==="Enter")$("rAdd").click(); });
 $("rName").addEventListener("keydown",e=>{ if(e.key==="Enter")$("rPhone").focus(); });
 $("rSeed").onclick=async()=>{
-  if(!confirm("이미 학습 기록이 있는 학생들을 명단에 넣습니다.\n지금 명단이 비어 있다면, 이 작업 이후로는 명단에 있는 학생만 입장할 수 있게 됩니다. 계속할까요?"))return;
+  if(!confirm("이미 학습 기록이 있는 학생들을 예외 명단에 넣습니다.\n성적 사이트에 없는 학생도 계속 입장할 수 있게 됩니다. 계속할까요?"))return;
   const btn=$("rSeed"); btn.disabled=true;
   try{
     const {data,error}=await sb.rpc("roster_seed_from_progress");
