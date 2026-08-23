@@ -259,14 +259,14 @@
   <!-- ============ SCREEN: HOME (grade select) ============ -->
   <section id="screen-home">
     <h1 class="title">오늘의 단어를 시작해요</h1>
-    <p class="subtitle">학년과 범위를 골라 플래시카드 · 퀴즈 · 단어장으로 공부하세요.</p>
+    <p class="subtitle">시험 범위를 골라 플래시카드 · 퀴즈 · 단어장으로 공부하세요.</p>
     <div class="grid" id="gradeGrid"></div>
   </section>
 
   <!-- ============ SCREEN: DAY select ============ -->
   <section id="screen-day" class="hidden">
     <h1 class="title" id="dayTitle">범위 선택</h1>
-    <p class="subtitle">전체로 한 번에, 또는 DAY별로 골라서 공부할 수 있어요.</p>
+    <p class="subtitle">전체로 한 번에, 또는 <span id="unitWord">챕터</span>별로 골라서 공부할 수 있어요.</p>
     <div class="panel">
       <div class="day-grid" id="dayGrid"></div>
     </div>
@@ -400,53 +400,658 @@ const AI_SHARE_ACCEPTED = true;  // AI가 인정한 답을 모든 학생에게 �
    단어 데이터 — 여기만 채우면 됩니다.
    구조:
    VOCAB_DATA = {
-     "고1상": {
+     "용산 고1 2026 2학기 중간고사": {
+       tag: "고1 · 2026 2학기",     // 홈 카드 위에 작게 붙는 말 (선택)
+       unit: "챕터",                 // 범위의 단위 이름 (선택, 기본 "DAY")
        days: {
-         "1": [ {w:"abandon", p:"동", m:"버리다, 포기하다"}, ... ],
-         "2": [ ... ],
+         "교과서 2-1": [ {w:"spark", m:"일으키다[유발하다]"}, ... ],
+         "1-2509-20": [ ... ],
        }
      },
-     "고1하": { ... }, ... "고3하": { ... }
+     "용산 고1 2026 기말고사": { ... }        // 시험/학기 단위로 늘려 가면 됩니다
    }
-   - w: 단어(표제어)   p: 품사(동/명/형…)   m: 뜻
+   - w: 단어(표제어)   m: 뜻   p: 품사(동/명/형, 선택)
+     p 를 적지 않으면 뜻의 형태에서 품사를 알아냅니다
+     (뜻이 "간과하다" 면 동사형만, "원자" 면 명사형만 정답 처리).
    - alt: (선택) 주관식 퀴즈에서 함께 정답으로 인정할 다른 표현. 쉼표로 구분.
           사전마다 뜻풀이가 달라서 학생이 다르게 쓸 만한 말을 적어 두면 됩니다.
           예) {w:"subsequently", p:"부", m:"그 뒤에, 나중에", alt:"추후에, 이후에, 뒤이어"}
           글자가 전혀 달라도( 나중 ↔ 추후 ) 여기 적어 두면 100% 정답 처리됩니다.
-   - days 의 키("1","2"…)는 DAY 번호 (문자열).
+   - days 의 키는 범위 이름입니다. "1","2" 처럼 숫자면 "DAY 1" 로 보이고,
+     "교과서 2-1" 처럼 글자가 섞이면 적은 그대로 보입니다. 적은 순서대로 나열됩니다.
    - 비어 있는 그룹은 홈 화면에서 "준비 중"으로 표시됩니다.
    ===================================================================== */
 
-const GROUPS = ["고1상","고1하","고2상","고2하","고3상","고3하"];
+const GROUPS = ["용산 고1 2026 2학기 중간고사"];
 
 const VOCAB_DATA = {
-  "고1상": {
+  "용산 고1 2026 2학기 중간고사": {
+    tag: "고1 · 2026 2학기",
+    unit: "챕터",
     days: {
-      "1": [
-        {w:"abandon", p:"동", m:"버리다, 포기하다"},
-        {w:"ability", p:"명", m:"능력, 재능"},
-        {w:"absorb", p:"동", m:"흡수하다, 빨아들이다"},
-        {w:"abstract", p:"형", m:"추상적인", alt:"관념적인, 이론상의"},
-        {w:"accurate", p:"형", m:"정확한, 정밀한"},
-        {w:"achieve", p:"동", m:"이루다, 성취하다"},
-        {w:"acquire", p:"동", m:"얻다, 습득하다"},
-        {w:"adapt", p:"동", m:"적응하다, 조정하다"}
+      "1-2509-20": [
+        {w:"inefficient", m:"비효율적인"},
+        {w:"overlook", m:"간과하다"},
+        {w:"potential", m:"잠재적인"},
+        {w:"opening minutes", m:"도입부 몇 분"},
+        {w:"pressing", m:"긴급한, 다급한"},
+        {w:"demand", m:"요구, 다급히 처리해야 할 일"},
+        {w:"disappear", m:"사라지다"},
+        {w:"It’s no wonder (that)", m:"~하는 것은 당연하다"},
+        {w:"on time", m:"정각에, 제시간에"},
+        {w:"get ~ off to a great start", m:"~을 아주 잘 시작하다"},
+        {w:"set the tone", m:"분위기를 조성하다"},
+        {w:"the rest of", m:"~의 나머지"},
+        {w:"routine", m:"정례적인 활동"},
+        {w:"brief", m:"짧은, 잠시 동안의"},
+        {w:"transition", m:"전환"},
+        {w:"subject", m:"과목"},
+        {w:"material", m:"학습 내용, 자료"},
+        {w:"in summary", m:"요약하자면"},
+        {w:"establish", m:"확립하다, 정착시키다"},
+        {w:"effective", m:"효과적인"}
       ],
-      "2": [
-        {w:"benefit", p:"명", m:"이익, 혜택"},
-        {w:"bias", p:"명", m:"편견, 선입견"},
-        {w:"bound", p:"형", m:"~할 가능성이 큰, 묶인", alt:"틀림없이 ~할, 얽매인"},
-        {w:"brief", p:"형", m:"간단한, 짧은"},
-        {w:"broad", p:"형", m:"넓은, 광범위한"},
-        {w:"burden", p:"명", m:"부담, 짐"}
+      "1-2509-21": [
+        {w:"atom", m:"원자"},
+        {w:"universe", m:"우주"},
+        {w:"inhale", m:"(숨을) 들이쉬다"},
+        {w:"exhale", m:"(숨을) 내쉬다"},
+        {w:"remaining", m:"남은, 남아 있는"},
+        {w:"means", m:"수단, 방법 (형태는 복수형이지만 '수단'이라는 뜻의 단수로도 쓰임)"},
+        {w:"make up", m:"~을 구성하다"},
+        {w:"pool", m:"공동 자원[집합체]"},
+        {w:"cycle", m:"순환하다"},
+        {w:"evaporate", m:"증발시키다"},
+        {w:"recycle", m:"재활용[재순환]하다"},
+        {w:"on a grand scale", m:"거대한 규모로, 대대적으로"},
+        {w:"origin", m:"기원, 출처"},
+        {w:"exist", m:"존재하다"},
+        {w:"throughout", m:"~ 전체에 걸쳐"},
+        {w:"limitless", m:"무한한"},
+        {w:"nonliving", m:"무생물의"},
+        {w:"present", m:"현재의"},
+        {w:"caretaker", m:"관리인, 임시 보관자"},
+        {w:"follow", m:"~의 뒤를 잇다"}
+      ],
+      "1-2509-22": [
+        {w:"involve", m:"포함[수반]하다"},
+        {w:"a range of", m:"다양한"},
+        {w:"flexibility", m:"유연성"},
+        {w:"endurance", m:"지구력"},
+        {w:"weeding", m:"잡초 뽑기"},
+        {w:"compost", m:"퇴비"},
+        {w:"beneficial", m:"유익한"},
+        {w:"challenging", m:"힘든[어려운]"},
+        {w:"low-impact", m:"(신체에) 충격이 적은"},
+        {w:"accessible", m:"접근하기 쉬운"},
+        {w:"profound", m:"깊은[지대한]"},
+        {w:"tend to", m:"~을 보살피다"},
+        {w:"meditative", m:"명상적인"},
+        {w:"anxiety", m:"불안"},
+        {w:"repetitive", m:"반복적인"},
+        {w:"induce", m:"유도하다[일으키다]"},
+        {w:"mindfulness", m:"마음챙김"},
+        {w:"elevate", m:"높이다[북돋우다]"},
+        {w:"cognition", m:"인지(능력)"},
+        {w:"symptom", m:"증상"},
+        {w:"accomplishment", m:"성취(감)"},
+        {w:"thrive", m:"잘 자라다[번성하다]"},
+        {w:"boost", m:"높이다[증진시키다]"},
+        {w:"self-esteem", m:"자존감"},
+        {w:"overall", m:"전반적인"}
+      ],
+      "1-2509-23": [
+        {w:"take advantage of", m:"~을 활용[이용]하다"},
+        {w:"translate", m:"변환하다"},
+        {w:"perception", m:"지각, 인지"},
+        {w:"phenomenon", m:"현상"},
+        {w:"perceive", m:"감각하다, 인지하다"},
+        {w:"consist of", m:"~로 구성되다"},
+        {w:"amplify", m:"증폭시키다"},
+        {w:"feed into", m:"~로 유입되다"},
+        {w:"sensory input", m:"감각 입력"},
+        {w:"bring into clear view", m:"~을 명확하게 보이게 하다"},
+        {w:"on one's own", m:"스스로, 자력으로"},
+        {w:"instrument", m:"계측기, 관찰 도구"},
+        {w:"observe", m:"관찰하다"},
+        {w:"take the form of", m:"~의 형태를 띠다"},
+        {w:"expand the reach of", m:"~의 범위를 확장하다"},
+        {w:"ultraviolet spectrum", m:"자외선 스펙트럼"},
+        {w:"audible", m:"(소리가) 들리는"},
+        {w:"alternatively", m:"그 대신에"},
+        {w:"property", m:"특성, 속성"},
+        {w:"sensory capacity", m:"감각 능력"}
+      ],
+      "1-2509-24": [
+        {w:"opponent", m:"반대자"},
+        {w:"experimentation", m:"실험"},
+        {w:"decline", m:"감소"},
+        {w:"mortality", m:"사망률"},
+        {w:"contribute to", m:"~에 기여하다"},
+        {w:"claim", m:"주장하다"},
+        {w:"correlation", m:"상관관계"},
+        {w:"advancement", m:"발전[진보]"},
+        {w:"former", m:"전자"},
+        {w:"latter", m:"후자"},
+        {w:"reject", m:"거부하다[일축하다]"},
+        {w:"inference", m:"추론"},
+        {w:"prescribe", m:"규정하다"},
+        {w:"prosthetic device", m:"인공 보조 장치"},
+        {w:"subsequently", m:"그 뒤에[이어서]"},
+        {w:"prior", m:"이전의[사전의]"},
+        {w:"consequently", m:"결과적으로"},
+        {w:"legal necessity", m:"법적 필요성"},
+        {w:"physician", m:"의사"},
+        {w:"clinical", m:"임상의"},
+        {w:"substantial", m:"상당한[중요한]"}
+      ],
+      "1-2509-29": [
+        {w:"mammalian", m:"포유류의"},
+        {w:"herbivore", m:"초식 동물"},
+        {w:"predator", m:"포식자"},
+        {w:"instant", m:"즉각적인"},
+        {w:"flight", m:"도망[도주]"},
+        {w:"perceive", m:"인지하다"},
+        {w:"threat", m:"위협"},
+        {w:"herd", m:"무리[떼] / 몰다"},
+        {w:"stand one's ground", m:"도망치지 않고 버티다"},
+        {w:"captivity", m:"사육, 감금 (상태)"},
+        {w:"enclosure", m:"(울타리를 친) 우리"},
+        {w:"panic", m:"공포에 질리다"},
+        {w:"repeatedly", m:"반복적으로"},
+        {w:"attempt", m:"시도"},
+        {w:"game", m:"사냥감"},
+        {w:"Fertile Crescent", m:"비옥한 초승달 지대"},
+        {w:"settled", m:"정착한"},
+        {w:"opportunity", m:"기회"},
+        {w:"domesticate", m:"길들이다[가축화하다]"},
+        {w:"blindly", m:"맹목적으로"},
+        {w:"leap", m:"도약하다[뛰다]"}
+      ],
+      "1-2509-30": [
+        {w:"species", m:"종, 생물종"},
+        {w:"tendency", m:"경향, 성향"},
+        {w:"cooperate", m:"협력하다"},
+        {w:"complicated", m:"복잡한"},
+        {w:"plenty", m:"풍부한"},
+        {w:"nomadic", m:"유목의"},
+        {w:"tribe", m:"부족"},
+        {w:"in one's interest", m:"~에게 이득이 되는"},
+        {w:"happen upon", m:"~을 우연히 만나다"},
+        {w:"hospitality", m:"환대, 대접"},
+        {w:"survival", m:"생존"},
+        {w:"depend on", m:"~에 달려 있다"},
+        {w:"shelter", m:"거처, 피신처"},
+        {w:"ironically", m:"역설적이게도"},
+        {w:"sophisticated", m:"정교한"},
+        {w:"security", m:"보안, 방비"},
+        {w:"keep away", m:"멀리하다"},
+        {w:"desire", m:"욕망, 욕구"},
+        {w:"combined with", m:"~와 결합되어"},
+        {w:"interaction", m:"상호작용"},
+        {w:"common folk", m:"평범한 사람들, 서민"},
+        {w:"disconnection", m:"단절"},
+        {w:"blindness", m:"보지 못함, 무지"}
+      ],
+      "1-2509-31": [
+        {w:"content", m:"만족하는"},
+        {w:"discontent", m:"불만족스러운"},
+        {w:"determine", m:"결정하다"},
+        {w:"merely", m:"단지, 그저"},
+        {w:"individual", m:"개별적인"},
+        {w:"successive", m:"연속적인, 잇따른"},
+        {w:"affect", m:"영향을 미치다"},
+        {w:"gust of wind", m:"돌풍"},
+        {w:"adjust", m:"적응하다"},
+        {w:"default level", m:"기본 수준"},
+        {w:"well-being", m:"행복, 안녕"},
+        {w:"highs and lows", m:"기복[높낮이]"},
+        {w:"seek its own level", m:"수평을 이루다"},
+        {w:"baseline", m:"기준선, 기본 상태"},
+        {w:"euphoria", m:"행복감, 희열"},
+        {w:"fade", m:"희미해지다,시들해지다"},
+        {w:"despair", m:"절망"},
+        {w:"break-up", m:"이별, 결별"},
+        {w:"tendency", m:"경향, 성향"},
+        {w:"long for", m:"~을 갈망하다"},
+        {w:"for the rest of", m:"~의 남은 동안"},
+        {w:"adapt", m:"적응하다"}
+      ],
+      "1-2509-32": [
+        {w:"put off", m:"~을 미루다"},
+        {w:"squeeze into", m:"~을 밀어 넣다"},
+        {w:"eventually", m:"결국"},
+        {w:"overwhelming", m:"압도적인"},
+        {w:"force", m:"강제로 ~하게 하다"},
+        {w:"drive", m:"욕구, 충동"},
+        {w:"be due to", m:"~ 때문이다"},
+        {w:"in part", m:"부분적으로"},
+        {w:"compound", m:"화합물"},
+        {w:"build up", m:"축적되다[쌓이다]"},
+        {w:"break down", m:"분해하다"},
+        {w:"molecule", m:"분자"},
+        {w:"keep track of", m:"~을 파악하다"},
+        {w:"trigger", m:"유발하다[일으키다]"},
+        {w:"accumulation", m:"축적"},
+        {w:"factor", m:"요인, 요소"},
+        {w:"optimal", m:"최적의"},
+        {w:"sleep debt", m:"수면 부채"},
+        {w:"make up", m:"보충하다[메우다]"},
+        {w:"built-in", m:"내장된[타고난]"},
+        {w:"molecular", m:"분자의"},
+        {w:"feedback", m:"피드백, 반응"},
+        {w:"become accustomed ~에 익숙해지다to catch up with", m:"~의 발목을 잡다[따라  잡다]"}
+      ],
+      "1-2509-33": [
+        {w:"uncertainty", m:"불확실성"},
+        {w:"member of the", m:"일반 대중public"},
+        {w:"appreciate", m:"이해하다[인식하다]"},
+        {w:"significance", m:"중요성[의미]"},
+        {w:"relative", m:"상대적인"},
+        {w:"take for example", m:"~을 예로 들다"},
+        {w:"measure", m:"측정하다"},
+        {w:"relatively", m:"상대적으로"},
+        {w:"precise", m:"정밀한[정확한]"},
+        {w:"after all", m:"결국[어쨌든]"},
+        {w:"significant digit", m:"유효 숫자"},
+        {w:"accuracy", m:"정확도"},
+        {w:"one part in a million", m:"백만 분의 일"},
+        {w:"or so", m:"~정도[가량]"},
+        {w:"digit", m:"숫자[자릿수]"},
+        {w:"quoted", m:"제시된[인용된]"},
+        {w:"depend on", m:"~에 달려 있다"},
+        {w:"intend to", m:"~할 의도이다"},
+        {w:"care about", m:"~에 신경 쓰다"},
+        {w:"rise", m:"(해·달 등이) 뜨다"},
+        {w:"satellite", m:"인공위성"},
+        {w:"orbit", m:"궤도를 돌다"},
+        {w:"accurately", m:"정확하게"}
+      ],
+      "1-2509-34": [
+        {w:"journalist", m:"언론인"},
+        {w:"argue", m:"주장하다"},
+        {w:"renewable energy", m:"재생 가능 에너지"},
+        {w:"infrastructure", m:"기간 시설[인프라]"},
+        {w:"in addition to", m:"~에 더하여"},
+        {w:"alternative", m:"대안의[대체 가능한]"},
+        {w:"procedure", m:"절차"},
+        {w:"transformation", m:"변화[전환]"},
+        {w:"fossil fuel", m:"화석 연료"},
+        {w:"scarce", m:"희귀한[부족한]"},
+        {w:"excavate", m:"채굴하다[발굴하다]"},
+        {w:"push towards", m:"~을 추진하다"},
+        {w:"construction", m:"건설"},
+        {w:"undermine", m:"약화시키다[해치다]"},
+        {w:"factor", m:"요인"},
+        {w:"effort", m:"노력"},
+        {w:"emission", m:"배출(량)"},
+        {w:"remark", m:"언급하다"},
+        {w:"seldom", m:"좀처럼 ~않는"},
+        {w:"transition", m:"전환[이행]"},
+        {w:"proposal", m:"제안(서)"},
+        {w:"tend to", m:"~하는 경향이 있다"},
+        {w:"requirement", m:"요구 조건[필요 요건]"}
+      ],
+      "1-2509-35": [
+        {w:"intelligent", m:"지능적인"},
+        {w:"human-like", m:"인간 같은"},
+        {w:"myth", m:"신화"},
+        {w:"automaton", m:"자동 장치[인형]"},
+        {w:"artificial being", m:"인공적 존재"},
+        {w:"ancient", m:"고대의"},
+        {w:"release", m:"풀어놓다[발산하다]"},
+        {w:"ill", m:"재앙[악]"},
+        {w:"likewise", m:"마찬가지로"},
+        {w:"literature", m:"문학"},
+        {w:"creature", m:"피조물[생물]"},
+        {w:"mathematician", m:"수학자"},
+        {w:"reason", m:"추론하다"},
+        {w:"measure", m:"측정하다"},
+        {w:"autonomously", m:"자율적으로"},
+        {w:"coin", m:"(신조어를) 만들다"},
+        {w:"replace", m:"대체하다"},
+        {w:"previously", m:"이전에"},
+        {w:"automata", m:"자동 장치들"},
+        {w:"practice", m:"실행[실천]"},
+        {w:"endow", m:"부여하다[주다]"},
+        {w:"creator", m:"창조자"},
+        {w:"reasoning", m:"추론"}
+      ],
+      "1-2509-36": [
+        {w:"cope with", m:"~에 대처하다"},
+        {w:"extreme", m:"극심한"},
+        {w:"hibernate", m:"동면하다"},
+        {w:"immobile", m:"움직이지 않는"},
+        {w:"surface", m:"지상으로 올라오다"},
+        {w:"stock up on", m:"~을 비축하다"},
+        {w:"extended", m:"연장된[길어진]"},
+        {w:"reptile", m:"파충류"},
+        {w:"rely on", m:"~에 의존하다"},
+        {w:"sophisticated", m:"정교한"},
+        {w:"bladder", m:"방광"},
+        {w:"act as", m:"~의 역할을 하다"},
+        {w:"reabsorb", m:"재흡수하다"},
+        {w:"incredibly", m:"놀랍게도"},
+        {w:"take in", m:"섭취하다[흡수하다]"},
+        {w:"freshwater", m:"담수[민물]"},
+        {w:"survival", m:"생존"},
+        {w:"park ranger", m:"공원 관리원"},
+        {w:"remind", m:"상기시키다[일깨우다]"},
+        {w:"terrified", m:"겁에 질린"},
+        {w:"empty", m:"비우다"},
+        {w:"precious", m:"귀중한"},
+        {w:"reserve", m:"비축량[저장량]"}
+      ],
+      "1-2509-37": [
+        {w:"pedal", m:"페달을 밟다"},
+        {w:"level", m:"평평한"},
+        {w:"force", m:"힘"},
+        {w:"act", m:"작용하다"},
+        {w:"gradually", m:"서서히[점차]"},
+        {w:"suddenly", m:"갑자기"},
+        {w:"distance", m:"거리"},
+        {w:"put the brakes on", m:"브레이크를 걸다"},
+        {w:"exert", m:"(힘을) 가하다"},
+        {w:"grip", m:"꽉 잡다[움켜잡다]"},
+        {w:"rub", m:"문지르다[마찰하다]"},
+        {w:"wheel-rim", m:"바퀴 테[림]"},
+        {w:"friction", m:"마찰(력)"},
+        {w:"tend to", m:"~하는 경향이 있다"},
+        {w:"direction", m:"방향"},
+        {w:"opposite", m:"반대의"},
+        {w:"backwards", m:"뒤로, 역방향으로"},
+        {w:"axle", m:"차축"},
+        {w:"resistance", m:"저항"},
+        {w:"apply", m:"적용하다"},
+        {w:"generate", m:"발생시키다"},
+        {w:"mainly", m:"주로"},
+        {w:"rotate", m:"회전하다"}
+      ],
+      "1-2509-38": [
+        {w:"nonlinear", m:"비선형의"},
+        {w:"random access", m:"임의 접근"},
+        {w:"shot", m:"장면[샷]"},
+        {w:"fast forward", m:"빨리 돌리기"},
+        {w:"fast reverse", m:"되돌리기"},
+        {w:"a range of", m:"다양한"},
+        {w:"special effect", m:"특수 효과"},
+        {w:"wipe", m:"와이프(화면 전환 기법)"},
+        {w:"dissolve", m:"디졸브(화면 겹침 전환)"},
+        {w:"highlight", m:"주요 특징"},
+        {w:"process", m:"과정[절차]"},
+        {w:"desired", m:"원하는"},
+        {w:"rewind", m:"(테이프를) 되돌리다"},
+        {w:"remove", m:"제거하다"},
+        {w:"adjust", m:"조절하다[조정하다]"},
+        {w:"length", m:"길이"},
+        {w:"automatically", m:"자동으로"},
+        {w:"linear", m:"선형의"},
+        {w:"compose", m:"작성하다[작품을 쓰다]"},
+        {w:"retype", m:"다시 입력하다"},
+        {w:"on the other hand", m:"반면에"},
+        {w:"word processing", m:"문서 작성"},
+        {w:"delete", m:"삭제하다"},
+        {w:"fix", m:"수정하다[고치다]"},
+        {w:"keystroke", m:"키 누르기[키 입력]"}
+      ],
+      "1-2509-39": [
+        {w:"morally", m:"도덕적으로"},
+        {w:"significantly", m:"상당히[현저하게]"},
+        {w:"judge", m:"판단하다[평가하다]"},
+        {w:"intention", m:"의도"},
+        {w:"motive", m:"동기"},
+        {w:"relevant", m:"유의미한[관련이 있는]"},
+        {w:"intend to", m:"~할 작정이다[의도하  다]"},
+        {w:"unintentionally", m:"의도치 않게[본의 아니  게]"},
+        {w:"turn out", m:"(결과가) ~되다"},
+        {w:"slapstick", m:"슬랩스틱(신체적 동작  을 통한 과장된 코미디)"},
+        {w:"be worth -ing", m:"~할 가치가 있다"},
+        {w:"mention", m:"언급하다"},
+        {w:"false", m:"잘못된[그릇된]"},
+        {w:"impression", m:"인상[생각]"},
+        {w:"actual", m:"실제의"},
+        {w:"consequence", m:"결과"},
+        {w:"count toward", m:"~에 반영되다[고려되다]"},
+        {w:"prevent", m:"막다[예방하다]"},
+        {w:"mean well", m:"좋은 뜻으로 하다[선의  를 품다]"},
+        {w:"contrary to", m:"~와는 반대로"},
+        {w:"regard A as B", m:"A를 B로 여기다[간주  하다]"}
+      ],
+      "1-2509-40": [
+        {w:"preconception", m:"선입견[사전 개념]"},
+        {w:"establish", m:"형성하다[확립하다]"},
+        {w:"unconscious", m:"무의식적인"},
+        {w:"hierarchy", m:"위계[계층 구조]"},
+        {w:"reflect", m:"반영하다[나타내다]"},
+        {w:"functional", m:"기능적인"},
+        {w:"momentary", m:"순간적인"},
+        {w:"priority", m:"우선순위"},
+        {w:"visualize", m:"마음속에 그리다[시각화  하다]"},
+        {w:"mind's eye", m:"마음의 눈[상상]"},
+        {w:"in profile", m:"옆모습으로[측면으로]"},
+        {w:"expectation", m:"기대[예상]"},
+        {w:"interfere with", m:"~을 방해하다"},
+        {w:"document", m:"(상세히) 기록하다"},
+        {w:"impartially", m:"편견 없이[공정하게]"},
+        {w:"interpret", m:"해석하다[설명하다]"},
+        {w:"confusing", m:"혼란스러운"},
+        {w:"serve up", m:"제공하다[차려내다]"},
+        {w:"mechanical", m:"기계적인"},
+        {w:"indifference", m:"무관심[냉담]"},
+        {w:"flatness", m:"평면성"},
+        {w:"unrecognizable", m:"알아볼 수 없는[식별   불가능한]"}
+      ],
+      "교과서 1-1": [
+        {w:"missing", m:"행방불명된, 사라진"},
+        {w:"rescue team", m:"구조대"},
+        {w:"National Forest", m:"국유림"},
+        {w:"turn out", m:"~임이 밝혀지다[알고   보니 ~이다]"},
+        {w:"play a key role", m:"핵심적인 역할을 하다"},
+        {w:"go over to", m:"~에게 (진행을) 넘기다"},
+        {w:"details", m:"세부 사항"},
+        {w:"entrance", m:"입구"},
+        {w:"recently", m:"최근에"},
+        {w:"rescue", m:"구조하다"},
+        {w:"experienced", m:"숙련된, 경험이 풍부한"},
+        {w:"go on a hike", m:"등산을 가다"},
+        {w:"forest fire", m:"산불"},
+        {w:"destroy", m:"파괴하다, 훼손하다"},
+        {w:"cause", m:"~하게 만들다[원인이   되다]"},
+        {w:"take a wrong turn", m:"길을 잘못 들다"},
+        {w:"get lost", m:"길을 잃다"},
+        {w:"shout for help", m:"구조를 요청하며 외치다"},
+        {w:"in case", m:"~할 경우에 대비하여"},
+        {w:"pass by", m:"(옆을) 지나쳐 가다"},
+        {w:"plan to", m:"~할 계획이다"},
+        {w:"temperature", m:"기온, 온도"},
+        {w:"drop", m:"(기온 등이) 떨어지다"}
+      ],
+      "교과서 1-2": [
+        {w:"signal", m:"신호"},
+        {w:"to make matters", m:"설상가상으로worse"},
+        {w:"nearly", m:"거의"},
+        {w:"dead", m:"(배터리가) 방전된"},
+        {w:"spot", m:"장소[지점]"},
+        {w:"weak", m:"미약한[약한]"},
+        {w:"surroundings", m:"주변 환경[풍경]"},
+        {w:"local police", m:"현지 경찰[관할 경찰]"},
+        {w:"inform A of B", m:"A에게 B를 알리다[통  보하다]"},
+        {w:"missing", m:"실종된[행방불명된]"},
+        {w:"immediately", m:"즉시"},
+        {w:"rescue team", m:"구조대"},
+        {w:"despite", m:"~에도 불구하고"},
+        {w:"through the night", m:"밤새도록"},
+        {w:"not have any idea", m:"전혀 알지 못하다"},
+        {w:"hang over", m:"~ 위로 드리우다[늘어  뜨리다]"},
+        {w:"edge", m:"가장자리[절벽 끝]"},
+        {w:"canyon", m:"협곡"},
+        {w:"be covered in", m:"~로 덮여 있다"},
+        {w:"ash", m:"재"},
+        {w:"recent", m:"최근의"},
+        {w:"quality", m:"(사진 등의) 화질[품질]"},
+        {w:"poor", m:"(화질·품질 등이) 좋지   않은"},
+        {w:"due to", m:"~ 때문에"},
+        {w:"location setting", m:"위치 설정"},
+        {w:"be turned off", m:"(전원·기능 등이) 꺼져   있다"}
+      ],
+      "교과서 1-3": [
+        {w:"condition", m:"환경, 상태"},
+        {w:"find out", m:"알아내다, 밝혀내다"},
+        {w:"clue", m:"단서, 힌트"},
+        {w:"post", m:"(게시물 등을) 게시하다"},
+        {w:"recognize", m:"(보고) 알아보다, 인식  하다"},
+        {w:"scenery", m:"경치, 풍경"},
+        {w:"examine", m:"면밀히 조사하다"},
+        {w:"satellite image", m:"위성 사진"},
+        {w:"track", m:"추적하다, 자취를 따라  가다"},
+        {w:"inform A of B", m:"A에게 B를 알리다[통  보하다]"},
+        {w:"potential", m:"잠재적인"},
+        {w:"determine", m:"(사실을) 알아내다[밝히다]"},
+        {w:"film", m:"(영화 등을) 촬영하다"},
+        {w:"immediately", m:"즉시, 곧바로"},
+        {w:"remind A of B", m:"A에게 B를 떠올리게 하다"},
+        {w:"infer", m:"추론하다"},
+        {w:"approximate", m:"대략적인, 거의 정확한"},
+        {w:"location", m:"위치"},
+        {w:"be familiar with", m:"~에 익숙하다"},
+        {w:"feature", m:"특징, 지형적 특성"},
+        {w:"guess", m:"추측하다"},
+        {w:"valley", m:"계곡, 골짜기"},
+        {w:"ash", m:"재 a second night 이틀째 밤"}
+      ],
+      "교과서 1-4": [
+        {w:"final step", m:"최종 단계"},
+        {w:"compare A with B", m:"A와 B를 비교하다"},
+        {w:"view", m:"전경, 경치"},
+        {w:"satellite image", m:"위성 사진"},
+        {w:"find a match", m:"일치하는 것을 찾다"},
+        {w:"provide A with B", m:"A에게 B를 제공하다"},
+        {w:"probable", m:"유력한, 개연성이 높은"},
+        {w:"location", m:"위치"},
+        {w:"rescue helicopter", m:"구조 헬리콥터"},
+        {w:"less than", m:"~ 미만의"},
+        {w:"indicate", m:"지목하다, 가리키다"},
+        {w:"thanks to", m:"~ 덕분에"},
+        {w:"unusual", m:"비범한, 예사롭지 않은"},
+        {w:"skill", m:"기술, 실력"},
+        {w:"unharmed", m:"다치지 않은, 무사한"},
+        {w:"video call", m:"영상 통화"},
+        {w:"local police", m:"현지 경찰"},
+        {w:"remind", m:"당부하다, 상기시키다"},
+        {w:"inform A of B", m:"A에게 B를 알리다"},
+        {w:"planned route", m:"예정된 경로"},
+        {w:"paper map", m:"종이 지도"}
+      ],
+      "교과서 2-1": [
+        {w:"spark", m:"일으키다[유발하다]"},
+        {w:"criminal", m:"범인[범죄자]"},
+        {w:"crime scene", m:"범죄 현장"},
+        {w:"leave behind", m:"남기다"},
+        {w:"trace", m:"흔적"},
+        {w:"presence", m:"존재"},
+        {w:"obvious", m:"분명한[명확한]"},
+        {w:"soil", m:"흙"},
+        {w:"detective", m:"형사[탐정]"},
+        {w:"evidence", m:"증거"},
+        {w:"analyze", m:"분석하다"},
+        {w:"clue", m:"단서"},
+        {w:"commit", m:"(범죄를) 저지르다"},
+        {w:"process", m:"과정"},
+        {w:"forensic science", m:"법의학[과학 수사]"},
+        {w:"evolve", m:"발전하다"},
+        {w:"thanks to", m:"~ 덕분에"},
+        {w:"contribution", m:"기여[공헌]"},
+        {w:"development", m:"발전"},
+        {w:"medicine", m:"의학"},
+        {w:"attend", m:"다니다[입학하다]"},
+        {w:"accept", m:"받아들이다[입학을 허가  하다]"},
+        {w:"have no choice", m:"~할 수밖에 없다but to"},
+        {w:"It is not until ~", m:"~하고 나서야 비로소~ that ...  …하다 career  경력[직업]"}
+      ],
+      "교과서 2-2": [
+        {w:"real-life", m:"실제의"},
+        {w:"medical examiner", m:"검시관"},
+        {w:"investigation", m:"수사[조사]"},
+        {w:"investigate", m:"수사하다[조사하다]"},
+        {w:"close", m:"(사건 등을) 종결하다"},
+        {w:"examine", m:"(시신 등을) 검시하다"},
+        {w:"legal medicine", m:"법의학"},
+        {w:"spark", m:"(관심 등을) 일으키다  [유발하다]"},
+        {w:"expert", m:"전문가"},
+        {w:"adopt", m:"채택하다[도입하다]"},
+        {w:"furthermore", m:"게다가[더욱이]"},
+        {w:"devote", m:"바치다[헌신하다]"},
+        {w:"field", m:"분야"},
+        {w:"persuade", m:"설득하다"},
+        {w:"fortune", m:"재산[부]"},
+        {w:"branch of study", m:"학문 분야"},
+        {w:"set up", m:"설립하다[구축하다]"},
+        {w:"rare", m:"희귀한[귀한]"},
+        {w:"document", m:"문서[기록]"},
+        {w:"independent", m:"독립적인"},
+        {w:"support", m:"지지[지원]"},
+        {w:"governor", m:"주지사"},
+        {w:"chairman", m:"학과장[위원장]"},
+        {w:"Department of Legal Medicine", m:"법의학과"}
+      ],
+      "교과서 2-3": [
+        {w:"effort", m:"노력"},
+        {w:"department", m:"학과"},
+        {w:"train", m:"교육하다[훈련시키다]"},
+        {w:"medical examiner", m:"검시관"},
+        {w:"potential", m:"잠재적인"},
+        {w:"evidence", m:"증거"},
+        {w:"step on", m:"~을 밟다"},
+        {w:"destroy", m:"훼손하다[파괴하다]"},
+        {w:"realize", m:"알아차리다[깨닫다]"},
+        {w:"due to", m:"~ 때문에"},
+        {w:"analyze", m:"분석하다"},
+        {w:"observe", m:"관찰하다"},
+        {w:"crime scene", m:"범죄 현장"},
+        {w:"point of view", m:"관점"},
+        {w:"effectively", m:"효과적으로"},
+        {w:"come up with", m:"~을 생각해내다"},
+        {w:"creative", m:"창의적인"},
+        {w:"miniature", m:"축소 모형"},
+        {w:"highly", m:"매우"},
+        {w:"detailed", m:"세밀한[정교한]"},
+        {w:"accurate", m:"정확한"},
+        {w:"based on", m:"~에 기반한"},
+        {w:"criminal case", m:"범죄 사건"},
+        {w:"blood stain", m:"혈흔[핏자국]"},
+        {w:"miss", m:"놓치다"},
+        {w:"label", m:"라벨[표지]"},
+        {w:"notice", m:"포착하다[알아채다]"}
+      ],
+      "교과서 2-4": [
+        {w:"hold a seminar", m:"세미나를 개최하다"},
+        {w:"week-long", m:"일주일간 계속되는"},
+        {w:"miniature", m:"축소 모형의"},
+        {w:"case file", m:"사건 기록 문서"},
+        {w:"detective", m:"형사[탐정]"},
+        {w:"determine", m:"밝혀내다[판단하다]"},
+        {w:"result from", m:"~에서 비롯되다"},
+        {w:"accident", m:"사고"},
+        {w:"violent crime", m:"강력 범죄"},
+        {w:"observe", m:"관찰하다"},
+        {w:"destroy", m:"훼손하다[파괴하다]"},
+        {w:"evidence", m:"증거"},
+        {w:"observation", m:"관찰(력)"},
+        {w:"improve", m:"향상시키다[개선하다]"},
+        {w:"annual", m:"매년의[연례의]"},
+        {w:"attend", m:"참석하다"},
+        {w:"special agent", m:"특수 요원"},
+        {w:"military staff", m:"군 관계자"},
+        {w:"career", m:"경력[이력]"},
+        {w:"struggle to", m:"~하려고 애쓰다"},
+        {w:"field", m:"분야"},
+        {w:"contribution", m:"기여[공헌]"},
+        {w:"forensic science", m:"법의학[과학 수사]"},
+        {w:"significant", m:"상당한[중요한]"},
+        {w:"It is no wonder that", m:"~하는 것은 당연하다"}
       ]
     }
-  },
-  "고1하": { days: {} },
-  "고2상": { days: {} },
-  "고2하": { days: {} },
-  "고3상": { days: {} },
-  "고3하": { days: {} }
+  }
 };
 
 /* ===================== 앱 로직 (수정 불필요) ===================== */
@@ -496,14 +1101,21 @@ function buildCrumb(name){
   if(c.lastChild) c.lastChild.remove(); // drop trailing separator
 }
 
+/* 범위(챕터/DAY) 표시 이름 — 키가 숫자면 "DAY 3", 아니면 적은 그대로 */
+function unitName(group){ return (VOCAB_DATA[group]||{}).unit || "DAY"; }
+function dayLabel(group,key){
+  return /^\d+$/.test(String(key)) ? unitName(group)+" "+key : String(key);
+}
+function dayKeys(group){ return Object.keys(VOCAB_DATA[group].days); }  // 적은 순서 그대로
+
 function favKey(group,day,word){return group+"|"+day+"|"+word;}
 function isFav(item){return favorites.has(favKey(item.group,item.day,item.word||item.w));}
 
 // flatten a group's days into [{group,day,w,p,m,word}]
 function itemsForScope(group, days){
   const g=VOCAB_DATA[group]; const out=[];
-  const dayKeys = days==="ALL" ? Object.keys(g.days) : days;
-  dayKeys.forEach(d=>{
+  const keys = days==="ALL" ? Object.keys(g.days) : days;
+  keys.forEach(d=>{
     (g.days[d]||[]).forEach(e=>out.push({group, day:d, w:e.w, p:e.p, m:e.m, alt:e.alt||"", word:e.w}));
   });
   return out;
@@ -521,9 +1133,10 @@ function buildHome(){
     const card=document.createElement("button");
     card.className="grade-card"+(n===0?" empty":"");
     const dayCount=Object.keys(VOCAB_DATA[g].days).length;
-    card.innerHTML=`<span class="g-eyebrow">${g.slice(0,2)} · ${g.slice(2)}</span>
-      <span class="g-name">${g}</span>
-      <span class="g-meta">${n>0?`단어 ${n}개 · ${dayCount} DAY`:"단어 준비 중"}</span>`;
+    const tag=(VOCAB_DATA[g].tag)||"단어장";
+    card.innerHTML=`<span class="g-eyebrow">${esc(tag)}</span>
+      <span class="g-name">${esc(g)}</span>
+      <span class="g-meta">${n>0?`단어 ${n}개 · ${dayCount}개 ${esc(unitName(g))}`:"단어 준비 중"}</span>`;
     if(n>0) card.onclick=()=>openDayScreen(g);
     grid.appendChild(card);
   });
@@ -533,25 +1146,24 @@ function buildHome(){
 function openDayScreen(group){
   state.group=group;
   $("dayTitle").textContent=group+" · 범위 선택";
+  const uw=$("unitWord"); if(uw) uw.textContent=unitName(group);
   const grid=$("dayGrid"); grid.innerHTML="";
   const total=countGroup(group);
 
   const all=document.createElement("button");
   all.className="day-chip all";
-  all.innerHTML=`<div class="d-num">전체 학습</div><div class="d-count">${total}개 단어</div>`;
+  all.innerHTML=`<div class="d-num">전체 학습</div><div class="d-count">${total}개 단어 · ${dayKeys(group).length}개 ${esc(unitName(group))}</div>`;
   all.onclick=()=>setScope(group,"ALL","전체");
   grid.appendChild(all);
 
-  Object.keys(VOCAB_DATA[group].days)
-    .sort((a,b)=>(+a)-(+b))
-    .forEach(d=>{
-      const arr=VOCAB_DATA[group].days[d];
-      const chip=document.createElement("button");
-      chip.className="day-chip";
-      chip.innerHTML=`<div class="d-num">DAY ${d}</div><div class="d-count">${arr.length}개</div>`;
-      chip.onclick=()=>setScope(group,[d],"DAY "+d);
-      grid.appendChild(chip);
-    });
+  dayKeys(group).forEach(d=>{
+    const arr=VOCAB_DATA[group].days[d];
+    const chip=document.createElement("button");
+    chip.className="day-chip";
+    chip.innerHTML=`<div class="d-num">${esc(dayLabel(group,d))}</div><div class="d-count">${arr.length}개</div>`;
+    chip.onclick=()=>setScope(group,[d],dayLabel(group,d));
+    grid.appendChild(chip);
+  });
   show("day");
 }
 
@@ -774,11 +1386,33 @@ function posHint(p){
        : p==="형" ? "‘~한/~인’처럼 <b>형용사</b>로 써 주세요."
        : p==="명" ? "‘~하다’를 빼고 <b>명사</b>로 써 주세요." : "";
 }
-/* 품사가 맞는가. 선생님이 적어 둔 뜻·추가 정답과 글자가 똑같으면 검사하지 않는다. */
+/* 단어가 요구하는 품사.
+   p 를 적어 두었으면 그것을 쓰고, 없으면 뜻의 형태에서 알아낸다.
+     "간과하다"  → 용언만 정답   ("간과" 는 오답)
+     "원자"      → 체언만 정답   ("원자이다" 는 오답)
+   뜻이 여럿이면 그중 하나라도 맞으면 통과시킨다. */
+const _needCache=new Map();
+function neededPos(item){
+  if(POS_NEED[item.p]) return new Set([POS_NEED[item.p]]);
+  const key=answerText(item);
+  if(_needCache.has(key)) return _needCache.get(key);
+  const need=new Set();
+  refVariants(key).forEach(v=>posSet(v.raw).forEach(x=>need.add(x)));
+  _needCache.set(key,need);
+  return need;
+}
+/* 품사가 맞는가. 선생님이 적어 둔 뜻과 글자가 똑같으면 검사하지 않는다. */
 function posOk(answer,item){
-  const need=POS_NEED[item.p];
-  if(!need) return true;
-  return posSet(answer).has(need);
+  const need=neededPos(item);
+  if(!need.size) return true;
+  for(const c of posSet(answer)) if(need.has(c)) return true;
+  return false;
+}
+function neededPosLabel(item){
+  if(POS_NEED[item.p]) return posLabel(item.p);
+  const need=neededPos(item);
+  if(need.size!==1) return "";
+  return need.has("용언") ? "동사·형용사" : "명사";
 }
 
 /* ---- 동의어 사전 (자주 나오는 뜻 묶음) ---- */
@@ -1336,8 +1970,9 @@ function renderQuiz(){
   const q=state.quiz; const it=q.order[q.i];
   const typing = q.mode==="type";
   $("quizWord").textContent=it.w;
+  const lbl = typing ? neededPosLabel(it) : "";
   $("quizPrompt").innerHTML = typing
-    ? `이 단어의 뜻을 직접 입력하세요${it.p?` · <b>${esc(posLabel(it.p))}</b>`:""}`
+    ? `이 단어의 뜻을 직접 입력하세요${lbl?` · <b>${esc(lbl)}</b>`:""}`
     : "알맞은 뜻을 고르세요";
   $("quizCounter").textContent=`${q.i+1} / ${q.order.length}`;
   $("quizBar").style.width=((q.i)/q.order.length)*100+"%";
@@ -1512,8 +2147,12 @@ function renderVerdict(res,it,raw){
 
   // 품사가 다르면 뜻이 통해도 오답. AI 에게 묻지 않고 여기서 끝낸다.
   if(res.verdict==="pos"){
+    const lbl=neededPosLabel(it);
+    const hint=res.need ? posHint(res.need)
+             : (neededPos(it).has("용언") ? "‘~하다 / ~한’ 처럼 <b>서술하는 말</b>로 써 주세요."
+                                          : "‘~하다’를 빼고 <b>명사</b>로 써 주세요.");
     feedback("no","❌ 품사가 달라요",
-      `<b>${esc(it.w)}</b> 는 <b>${esc(posLabel(res.need))}</b>예요. ${posHint(res.need)}<br>
+      `${lbl?`<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. `:""}${hint}<br>
        내 답: <b>${esc(raw.trim())}</b><br>${model}`);
     markWrong(it);
     return;
