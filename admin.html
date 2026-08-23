@@ -77,6 +77,35 @@
   .vrow .vw{font-size:16px;font-weight:700;min-width:110px}
   .vrow .vg{font-size:11px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:2px 9px;flex:none}
   .vrow .vm{color:var(--ink-soft);flex:1;font-size:14px}
+  /* 학생 명단 관리 */
+  .form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .form-group{display:flex;flex-direction:column;gap:6px;flex:1;min-width:130px}
+  .form-group label{font-size:12px;font-weight:700;color:var(--ink-soft)}
+  .form-group input,.form-group select{
+    border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:14px;
+    font-family:inherit;background:var(--paper);width:100%
+  }
+  .form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent);background:#fff}
+  .btn-go{background:var(--accent);color:#fff;border-radius:10px;padding:11px 20px;font-weight:700;font-size:14px}
+  .btn-go:hover{background:#27604f}
+  .btn-go:disabled{opacity:.5;cursor:default}
+
+  .stbl{width:100%;border-collapse:collapse;min-width:860px;font-size:13px}
+  .stbl th{text-align:left;padding:9px 8px;border-bottom:2px solid var(--line);font-size:12px;color:var(--ink-soft);white-space:nowrap}
+  .stbl td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .stbl input{border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px;font-family:inherit;background:#fff;width:100%}
+  .stbl input:focus{outline:none;border-color:var(--accent)}
+  .stbl .w-nm{width:90px}.stbl .w-pin{width:66px;text-align:center;font-family:ui-monospace,monospace}
+  .stbl .w-ph{width:126px}.stbl .w-note{width:150px}
+  .badge{font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
+  .badge.on{background:var(--accent-soft);color:var(--accent)}
+  .badge.off{background:var(--wrong-soft);color:var(--wrong)}
+  .tbtn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+  .tbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .cls{font-size:12px;color:var(--gold);font-weight:700;white-space:nowrap}
+  .scroll-x{overflow-x:auto}
+  .lockbox{max-width:420px;margin:10px auto 0;text-align:center}
+
   /* 주관식 인정 답안 */
   .arow{display:flex;align-items:center;gap:10px;padding:13px 6px;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .arow:last-child{border-bottom:none}
@@ -166,28 +195,65 @@
   <!-- ROSTER -->
   <section id="screen-roster" class="hidden">
     <span class="back" id="rosterBack">← 명단으로</span>
-    <h1 class="title">입장 허용 명단</h1>
-    <p class="subtitle">입장 확인은 <b>성적 사이트(score-system)의 학생 명단</b>을 그대로 씁니다.<br>
-      여기에는 성적 사이트에 없는 학생만 따로 넣어 주세요.</p>
+    <h1 class="title">학생 명단 관리</h1>
+    <p class="subtitle">성적 사이트(score-system)의 학생 명단을 그대로 고칩니다.<br>
+      여기서 바꾸면 성적 사이트에도 똑같이 반영됩니다.</p>
 
-    <div id="rosterBanner" style="border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.6"></div>
-
-    <div class="panel" style="margin-bottom:16px">
-      <div class="bar">
-        <input class="search" id="rName" placeholder="이름 (예: 김채현)" style="max-width:200px">
-        <input class="search" id="rPhone" placeholder="PIN 4자리" inputmode="numeric" maxlength="4" style="max-width:130px">
-        <button class="refresh" id="rAdd" style="background:var(--accent);color:#fff;border-color:var(--accent)">+ 예외 추가</button>
-        <button class="refresh" id="rSeed">기존 학습 기록에서 가져오기</button>
+    <!-- 비밀번호 -->
+    <div class="panel" id="ssLock">
+      <div class="lockbox">
+        <p class="note" style="margin-bottom:14px">성적 사이트 <b>관리자 번호</b>를 입력하면 학생 명단을 불러옵니다.<br>
+          입력한 번호는 <b>저장하지 않고</b> 이 화면을 벗어나면 지워집니다.</p>
+        <div class="fld" style="margin-bottom:12px">
+          <input id="ssPin" type="password" placeholder="성적 사이트 관리자 번호" autocomplete="off">
+        </div>
+        <button class="go" id="ssGo">명단 불러오기</button>
+        <p class="gate-msg" id="ssMsg"></p>
       </div>
-      <p class="note" id="rMsg" style="margin:0"></p>
     </div>
 
-    <div class="panel">
-      <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <h2 style="font-size:18px;font-weight:800">따로 허용한 학생</h2>
-        <span class="count" id="rCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
+    <!-- 명단 -->
+    <div id="ssBody" class="hidden">
+      <div class="panel" style="margin-bottom:16px">
+        <div class="list-head" style="margin-bottom:12px"><h2 style="font-size:18px;font-weight:800">학생 추가</h2></div>
+        <div class="form-row">
+          <div class="form-group"><label>이름</label><input type="text" id="nsName" placeholder="학생 이름"></div>
+          <div class="form-group"><label>PIN (연락처 뒷 4자리)</label><input type="text" id="nsPin" placeholder="4자리 숫자" maxlength="4" inputmode="numeric"></div>
+          <div class="form-group"><label>학부모 연락처</label><input type="text" id="nsPhone" placeholder="01012345678" inputmode="numeric"></div>
+          <div class="form-group"><label>학생 연락처</label><input type="text" id="nsSPhone" placeholder="01012345678" inputmode="numeric"></div>
+          <div class="form-group"><label>반</label><select id="nsClass"></select></div>
+        </div>
+        <button class="btn-go" id="nsAdd">학생 추가</button>
+        <p class="note" id="nsMsg" style="margin:10px 0 0"></p>
       </div>
-      <div id="rosterBody"></div>
+
+      <div class="panel" style="margin-bottom:16px">
+        <div class="list-head" style="margin-bottom:12px">
+          <h2 style="font-size:18px;font-weight:800">학생 목록 · 검색</h2>
+          <span class="count" id="ssCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>반 선택</label><select id="ssClassSel"></select></div>
+          <div class="form-group"><label>이름 검색 (전체 반)</label><input type="text" id="ssSearch" placeholder="학생 이름 입력"></div>
+        </div>
+        <p class="note" style="margin:0 0 10px">칸을 고치고 다른 곳을 누르면 바로 저장됩니다. 지우기는 성적 사이트에서 해 주세요.</p>
+        <div class="scroll-x" id="ssList"><p class="note">반을 고르거나 이름으로 검색하세요.</p></div>
+      </div>
+
+      <div class="panel">
+        <div class="list-head" style="margin-bottom:10px">
+          <h2 style="font-size:18px;font-weight:800">따로 허용한 학생</h2>
+          <span class="count" id="rCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
+        </div>
+        <p class="note">성적 사이트 명단에 <b>없는</b> 학생만 여기에 넣습니다. 단어 사이트에서만 입장이 허용됩니다.</p>
+        <div class="bar">
+          <input class="search" id="rName" placeholder="이름" style="max-width:180px">
+          <input class="search" id="rPhone" placeholder="PIN 4자리" inputmode="numeric" maxlength="4" style="max-width:120px">
+          <button class="refresh" id="rAdd" style="background:var(--accent);color:#fff;border-color:var(--accent)">+ 예외 추가</button>
+        </div>
+        <p class="note" id="rMsg" style="margin:0 0 10px"></p>
+        <div id="rosterBody"></div>
+      </div>
     </div>
   </section>
 
@@ -497,47 +563,180 @@ async function revokeGlobal(e){ return deleteShared(ALIAS_OWNER,e.word_id); }
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 $("backBtn").onclick=()=>{ renderList(); show("list"); };
 
-/* ---- 학생 명단 관리 ---- */
-let ROSTER=[];
-async function openRoster(){ await loadRoster(); show("roster"); }
-$("rosterBack").onclick=()=>show("list");
+/* ---- 학생 명단 관리 — 성적 사이트(score-system) 명단을 직접 고친다 ----
+   score-system 은 students 표를 anon 에 열어두지 않고 admin-api Edge Function
+   으로만 다룬다. 그래서 그 함수를 그대로 쓴다.
+   관리자 번호는 메모리에만 두고 어디에도 저장하지 않는다. */
+const SS_API  = "https://rcpzinsdocmpnfxkfbil.supabase.co/functions/v1/admin-api";
+const SS_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjcHppbnNkb2NtcG5meGtmYmlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzM2NzksImV4cCI6MjA5NTYwOTY3OX0.f_HsTsM4_z2qKeMtIXZ0G8vRuXFmHkXomIdQzFFXHb0";
+let ssPw="";            // 화면을 벗어나면 지운다
+let CLASSES=[], ROSTER=[];
 
-async function loadRoster(){
+async function ssApi(path, method="GET", body=null, prefer=null){
+  const res=await fetch(SS_API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+SS_ANON},
+    body:JSON.stringify({password:ssPw, path, method, body, prefer})
+  });
+  if(res.status===401){ ssPw=""; showLock("관리자 번호가 올바르지 않습니다."); throw new Error("unauthorized"); }
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const t=await res.text();
+  return t && t!=="null" ? JSON.parse(t) : null;
+}
+
+function showLock(msg){
+  $("ssLock").classList.remove("hidden");
+  $("ssBody").classList.add("hidden");
+  $("ssMsg").textContent=msg||"";
+  $("ssPin").value=""; $("ssPin").focus();
+}
+async function openRoster(){ show("roster"); ssPw ? await loadAllRoster() : showLock(""); }
+$("rosterBack").onclick=()=>{ ssPw=""; show("list"); };   // 나가면 번호를 지운다
+
+$("ssGo").onclick=async()=>{
+  const v=$("ssPin").value.trim();
+  if(!v){ $("ssMsg").textContent="관리자 번호를 입력해 주세요."; return; }
+  ssPw=v; $("ssGo").disabled=true; $("ssMsg").textContent="불러오는 중…";
+  try{
+    await loadAllRoster();
+    $("ssLock").classList.add("hidden"); $("ssBody").classList.remove("hidden"); $("ssMsg").textContent="";
+  }catch(e){ if(e.message!=="unauthorized") $("ssMsg").textContent="불러오지 못했어요."; }
+  $("ssGo").disabled=false;
+};
+$("ssPin").addEventListener("keydown",e=>{ if(e.key==="Enter")$("ssGo").click(); });
+
+async function loadAllRoster(){
+  CLASSES = await ssApi("classes?order=name.asc&select=*") || [];
+  const opts = CLASSES.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  $("nsClass").innerHTML = `<option value="">반 선택</option>`+opts;
+  $("ssClassSel").innerHTML = `<option value="">반을 선택하세요</option>`+opts;
+  await loadExceptions();
+}
+
+/* ---- 목록 · 검색 ---- */
+function renderStudents(list, showClass){
+  const cmap={}; CLASSES.forEach(c=>cmap[c.id]=c.name);
+  $("ssCount").textContent=`${list.length}명`;
+  if(!list.length) return `<p class="note">해당하는 학생이 없습니다.</p>`;
+  return `<table class="stbl"><thead><tr>${showClass?"<th>반</th>":""}
+    <th>이름</th><th>PIN</th><th>학부모 연락처</th><th>학생 연락처</th><th>상태</th><th>특이사항</th><th></th></tr></thead>
+    <tbody>${list.map(st=>`<tr data-id="${st.id}">
+      ${showClass?`<td><span class="cls">${esc(cmap[st.class_id]||"-")}</span></td>`:""}
+      <td><input class="w-nm" value="${esc(st.name||"")}" data-f="name"></td>
+      <td><input class="w-pin" value="${esc(st.pin||"")}" maxlength="4" data-f="pin"></td>
+      <td><input class="w-ph" value="${esc(st.phone||"")}" placeholder="01012345678" data-f="phone"></td>
+      <td><input class="w-ph" value="${esc(st.student_phone||"")}" placeholder="01012345678" data-f="student_phone"></td>
+      <td><span class="badge ${st.is_active?"on":"off"}">${st.is_active?"재원":"퇴원"}</span></td>
+      <td><input class="w-note" value="${esc(st.note||"")}" placeholder="특이사항" data-f="note"></td>
+      <td><div style="display:flex;gap:6px">
+        <button class="tbtn" data-act="toggle" data-on="${st.is_active?1:0}">${st.is_active?"퇴원":"복귀"}</button>
+        <button class="tbtn" data-act="move" data-cls="${st.class_id||""}">반 이동</button>
+      </div></td></tr>`).join("")}</tbody></table>`;
+}
+function bindStudentRows(){
+  $("ssList").querySelectorAll("input[data-f]").forEach(inp=>{
+    inp.dataset.was=inp.value;
+    inp.onblur=async()=>{
+      const v=inp.value.trim(), f=inp.dataset.f, id=inp.closest("tr").dataset.id;
+      if(v===inp.dataset.was) return;
+      if((f==="name"||f==="pin") && !v){ inp.value=inp.dataset.was; alert("이름과 PIN 은 비울 수 없어요."); return; }
+      if(f==="pin" && !/^\d{4}$/.test(v)){ inp.value=inp.dataset.was; alert("PIN 은 숫자 4자리여야 해요."); return; }
+      try{
+        await ssApi(`students?id=eq.${id}`,"PATCH",{[f]: v||null},"return=minimal");
+        inp.dataset.was=v; flash(inp);
+      }catch(e){ inp.value=inp.dataset.was; if(e.message!=="unauthorized") alert("저장하지 못했어요."); }
+    };
+  });
+  $("ssList").querySelectorAll("button[data-act]").forEach(btn=>{
+    const tr=btn.closest("tr"), id=tr.dataset.id;
+    const nm=tr.querySelector('input[data-f="name"]').value;
+    if(btn.dataset.act==="toggle") btn.onclick=async()=>{
+      const on=btn.dataset.on==="1";
+      if(!confirm(`${nm} 학생을 ${on?"퇴원":"복귀"} 처리할까요?`))return;
+      btn.disabled=true;
+      try{ await ssApi(`students?id=eq.${id}`,"PATCH",{is_active:!on},"return=minimal"); await refreshStudents(); }
+      catch(e){ if(e.message!=="unauthorized") alert("바꾸지 못했어요."); btn.disabled=false; }
+    };
+    if(btn.dataset.act==="move") btn.onclick=async()=>{
+      const cur=btn.dataset.cls;
+      const list=CLASSES.map((c,i)=>`${i+1}. ${c.name}`).join("\n");
+      const pick=prompt(`${nm} 학생을 어느 반으로 옮길까요?\n번호를 입력하세요.\n\n${list}`);
+      if(!pick)return;
+      const c=CLASSES[parseInt(pick,10)-1];
+      if(!c){ alert("번호가 올바르지 않아요."); return; }
+      if(String(c.id)===String(cur)){ return; }
+      try{ await ssApi(`students?id=eq.${id}`,"PATCH",{class_id:c.id},"return=minimal"); await refreshStudents(); }
+      catch(e){ if(e.message!=="unauthorized") alert("옮기지 못했어요."); }
+    };
+  });
+}
+function flash(el){ el.style.borderColor="var(--accent)"; setTimeout(()=>el.style.borderColor="",700); }
+
+async function refreshStudents(){
+  const q=$("ssSearch").value.trim();
+  const cid=$("ssClassSel").value;
+  const box=$("ssList");
+  if(!q && !cid){ box.innerHTML=`<p class="note">반을 고르거나 이름으로 검색하세요.</p>`; $("ssCount").textContent=""; return; }
+  box.innerHTML=`<p class="note">불러오는 중…</p>`;
+  try{
+    const path = q
+      ? `students?name=ilike.*${encodeURIComponent(q)}*&order=name.asc&select=*`
+      : `students?class_id=eq.${cid}&order=name.asc&select=*`;
+    const list=await ssApi(path) || [];
+    box.innerHTML=renderStudents(list, !!q);
+    bindStudentRows();
+  }catch(e){ if(e.message!=="unauthorized") box.innerHTML=`<p class="note">불러오지 못했어요.</p>`; }
+}
+$("ssClassSel").addEventListener("change",()=>{ $("ssSearch").value=""; refreshStudents(); });
+let _t; $("ssSearch").addEventListener("input",()=>{ clearTimeout(_t); _t=setTimeout(refreshStudents,300); });
+
+/* ---- 학생 추가 ---- */
+$("nsAdd").onclick=async()=>{
+  const name=$("nsName").value.trim(), pin=$("nsPin").value.trim(), cid=$("nsClass").value;
+  const msg=$("nsMsg"); msg.style.color="var(--wrong)";
+  if(!name || !pin || !cid){ msg.textContent="이름, PIN, 반을 모두 입력해 주세요."; return; }
+  if(!/^\d{4}$/.test(pin)){ msg.textContent="PIN 은 숫자 4자리여야 해요."; return; }
+  $("nsAdd").disabled=true;
+  try{
+    await ssApi("students","POST",{
+      name, pin, phone:$("nsPhone").value.trim()||null,
+      student_phone:$("nsSPhone").value.trim()||null,
+      class_id:parseInt(cid,10), is_active:true
+    },"return=minimal");
+    msg.style.color="var(--accent)"; msg.textContent=`${name} 학생을 추가했어요.`;
+    ["nsName","nsPin","nsPhone","nsSPhone"].forEach(id=>$(id).value="");
+    if($("ssClassSel").value===cid) await refreshStudents();
+  }catch(e){ if(e.message!=="unauthorized") msg.textContent="추가하지 못했어요."; }
+  $("nsAdd").disabled=false;
+};
+
+/* ---- 단어 사이트 전용 예외 명단 ---- */
+async function loadExceptions(){
   if(!sb)return;
   try{
     const {data,error}=await sb.rpc("roster_list");
     if(error)throw error;
     ROSTER=data||[];
-  }catch(e){ console.warn(e); ROSTER=[]; $("rMsg").textContent="명단을 불러오지 못했어요."; }
-  renderRoster();
+  }catch(e){ console.warn(e); ROSTER=[]; }
+  renderExceptions();
 }
-function renderRoster(){
+function renderExceptions(){
   $("rCount").textContent=`${ROSTER.length}명`;
-  const b=$("rosterBanner");
-  b.style.border="1px solid var(--accent)"; b.style.background="var(--accent-soft)";
-  b.innerHTML=`<b>✓ 성적 사이트 명단으로 입장을 확인합니다.</b><br>
-    학생이 <b>이름 + PIN(학부모님 연락처 뒷 4자리)</b>을 성적 사이트와 똑같이 넣어야 들어옵니다.
-    성적 사이트에서 학생을 추가하거나 지우면 여기에도 바로 반영됩니다.
-    ${ROSTER.length ? `<br>그 밖에 아래 <b>${ROSTER.length}명</b>을 따로 허용하고 있습니다.` : ""}`;
   const body=$("rosterBody"); body.innerHTML="";
-  if(ROSTER.length===0){
-    body.innerHTML=`<div class="empty-state"><div class="e-ic">👥</div>따로 허용한 학생이 없어요.<br>성적 사이트 명단만으로 입장을 확인하고 있습니다.</div>`;
+  if(!ROSTER.length){
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">👥</div>따로 허용한 학생이 없어요.</div>`;
     return;
   }
   ROSTER.forEach(st=>{
     const r=document.createElement("div"); r.className="arow";
-    r.innerHTML=`<span class="aw">${esc(st.name)}</span>
-      <span class="aa">PIN <b>${esc(st.phone4)}</b>
-        ${st.note?`<small>${esc(st.note)}</small>`:""}</span>`;
+    r.innerHTML=`<span class="aw">${esc(st.name)}</span><span class="aa">PIN <b>${esc(st.phone4)}</b>
+      ${st.note?`<small>${esc(st.note)}</small>`:""}</span>`;
     const del=document.createElement("button"); del.className="abtn"; del.textContent="삭제";
     del.onclick=async()=>{
-      if(!confirm(`${st.name} 학생의 예외 허용을 지울까요?\n(학습 기록은 그대로 남습니다. 성적 사이트 명단에 있으면 계속 입장됩니다)`))return;
+      if(!confirm(`${st.name} 학생의 예외 허용을 지울까요?\n(학습 기록은 남습니다)`))return;
       del.disabled=true;
-      try{
-        const {error}=await sb.rpc("roster_remove",{p_key:st.student_key});
-        if(error)throw error;
-        await loadRoster();
-      }catch(e){ console.warn(e); alert("삭제하지 못했어요."); del.disabled=false; }
+      try{ const {error}=await sb.rpc("roster_remove",{p_key:st.student_key}); if(error)throw error; await loadExceptions(); }
+      catch(e){ alert("삭제하지 못했어요."); del.disabled=false; }
     };
     r.appendChild(del); body.appendChild(r);
   });
@@ -546,31 +745,18 @@ $("rAdd").onclick=async()=>{
   const name=$("rName").value.trim(), phone=$("rPhone").value.trim();
   const msg=$("rMsg"); msg.style.color="var(--wrong)";
   if(!name){ msg.textContent="이름을 입력해 주세요."; return; }
-  if(!/^\d{4}$/.test(phone)){ msg.textContent="뒷 4자리를 숫자로 입력해 주세요."; return; }
-  const btn=$("rAdd"); btn.disabled=true;
+  if(!/^\d{4}$/.test(phone)){ msg.textContent="PIN 4자리를 숫자로 입력해 주세요."; return; }
+  $("rAdd").disabled=true;
   try{
     const {error}=await sb.rpc("roster_add",{p_name:name,p_phone:phone,p_note:null});
     if(error)throw error;
-    $("rName").value=""; $("rPhone").value=""; $("rName").focus();
-    msg.style.color="var(--accent)"; msg.textContent=`${name} 학생을 추가했어요.`;
-    await loadRoster();
-  }catch(e){ console.warn(e); msg.textContent="추가하지 못했어요."; }
-  btn.disabled=false;
+    $("rName").value=""; $("rPhone").value="";
+    msg.style.color="var(--accent)"; msg.textContent=`${name} 학생을 예외로 추가했어요.`;
+    await loadExceptions();
+  }catch(e){ msg.textContent="추가하지 못했어요."; }
+  $("rAdd").disabled=false;
 };
 $("rPhone").addEventListener("keydown",e=>{ if(e.key==="Enter")$("rAdd").click(); });
-$("rName").addEventListener("keydown",e=>{ if(e.key==="Enter")$("rPhone").focus(); });
-$("rSeed").onclick=async()=>{
-  if(!confirm("이미 학습 기록이 있는 학생들을 예외 명단에 넣습니다.\n성적 사이트에 없는 학생도 계속 입장할 수 있게 됩니다. 계속할까요?"))return;
-  const btn=$("rSeed"); btn.disabled=true;
-  try{
-    const {data,error}=await sb.rpc("roster_seed_from_progress");
-    if(error)throw error;
-    $("rMsg").style.color="var(--accent)";
-    $("rMsg").textContent=`${data??0}명을 명단에 추가했어요.`;
-    await loadRoster();
-  }catch(e){ console.warn(e); $("rMsg").style.color="var(--wrong)"; $("rMsg").textContent="가져오지 못했어요."; }
-  btn.disabled=false;
-};
 
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 
