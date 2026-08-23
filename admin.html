@@ -183,6 +183,7 @@
         <h2 style="font-size:18px;font-weight:800">🤖 AI가 인정한 답안</h2>
         <span class="count" id="aiCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
         <button class="refresh" id="aiCheck" style="margin-left:auto;padding:8px 14px">🔌 연결 확인</button>
+        <button class="refresh" id="aiPurge" style="padding:8px 14px;color:var(--wrong);border-color:var(--wrong)">전체 비우기</button>
         <button class="refresh" id="aiToggle" style="padding:8px 14px">펼치기</button>
       </div>
       <div id="aiStatus" class="hidden" style="border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.6"></div>
@@ -428,7 +429,7 @@ function renderAiPanel(){
     const del=document.createElement("button"); del.className="abtn"; del.textContent="지우기";
     del.onclick=async()=>{
       del.disabled=true;
-      const ok=await deleteShared(ALIAS_AI_OWNER,e.word_id);
+      const ok=await deleteAiAlias(e.word_id);
       if(ok){ AI_ROWS=AI_ROWS.filter(x=>x.word_id!==e.word_id); GLOBAL.delete(e.word_id); renderAiPanel(); }
       else { alert("지우지 못했어요. 잠시 후 다시 시도해 주세요."); del.disabled=false; }
     };
@@ -436,6 +437,14 @@ function renderAiPanel(){
   });
 }
 $("aiToggle").onclick=()=>{ aiOpen=!aiOpen; renderAiPanel(); };
+$("aiPurge").onclick=async()=>{
+  if(!confirm(`AI가 인정한 답안을 전부 지울까요? (${AI_ROWS.length}건 + 학생 개인 기록)\n\n채점 규칙을 바꾼 뒤에 누르면, 예전 규칙으로 잘못 인정된 답이 모두 사라지고\n다음 입력부터 새 규칙으로 다시 판정합니다.\n학생의 즐겨찾기·틀린 단어에는 영향이 없습니다.`))return;
+  const btn=$("aiPurge"); btn.disabled=true; btn.textContent="비우는 중…";
+  const ok=await purgeAiAliases();
+  if(ok){ AI_ROWS.forEach(e=>GLOBAL.delete(e.word_id)); AI_ROWS=[]; renderAiPanel(); alert("전부 지웠어요."); }
+  else alert("지우지 못했어요. 잠시 후 다시 시도해 주세요.");
+  btn.disabled=false; btn.textContent="전체 비우기";
+};
 
 /* ---- AI 채점 연결 확인 ---- */
 function aiStatus(kind,html){
@@ -477,6 +486,34 @@ $("aiCheck").onclick=async()=>{
   }
   btn.disabled=false; btn.textContent=label;
 };
+/* AI 인정 답안을 완전히 지운다 — 공유본과 모든 학생의 개인 기록(alias_ai)까지.
+   공유본만 지우면 처음 그 답을 쓴 학생에게는 계속 정답 처리된다. */
+async function deleteAiAlias(wordId){
+  if(!sb)return false;
+  try{
+    let r=await sb.from("progress").delete()
+      .eq("student_key",ALIAS_AI_OWNER).eq("kind","alias").eq("word_id",wordId);
+    if(r.error)throw r.error;
+    r=await sb.from("progress").delete()
+      .eq("kind","alias_ai").eq("word_id",wordId);        // 모든 학생
+    if(r.error)throw r.error;
+    return true;
+  }catch(err){ console.warn(err); return false; }
+}
+/* 채점 규칙을 바꾼 뒤에는 예전 규칙으로 인정된 답이 남아 오답이 정답 처리될 수 있다.
+   전부 비우면 다음 입력부터 새 규칙으로 다시 판정한다. */
+async function purgeAiAliases(){
+  if(!sb)return false;
+  try{
+    let r=await sb.from("progress").delete()
+      .eq("student_key",ALIAS_AI_OWNER).eq("kind","alias");
+    if(r.error)throw r.error;
+    r=await sb.from("progress").delete().eq("kind","alias_ai");
+    if(r.error)throw r.error;
+    return true;
+  }catch(err){ console.warn(err); return false; }
+}
+
 async function deleteShared(owner,wordId){
   if(!sb)return false;
   try{
