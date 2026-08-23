@@ -246,6 +246,7 @@
           <span class="count" id="rCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
         </div>
         <p class="note">성적 사이트 명단에 <b>없는</b> 학생만 여기에 넣습니다. 단어 사이트에서만 입장이 허용됩니다.</p>
+        <div id="excWarn" class="hidden" style="border:1px solid var(--wrong);background:var(--wrong-soft);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13.5px;line-height:1.65"></div>
         <div class="bar">
           <input class="search" id="rName" placeholder="이름" style="max-width:180px">
           <input class="search" id="rPhone" placeholder="PIN 4자리" inputmode="numeric" maxlength="4" style="max-width:120px">
@@ -610,6 +611,7 @@ async function loadAllRoster(){
   const opts = CLASSES.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
   $("nsClass").innerHTML = `<option value="">반 선택</option>`+opts;
   $("ssClassSel").innerHTML = `<option value="">반을 선택하세요</option>`+opts;
+  await checkLoginFn();
   await loadExceptions();
 }
 
@@ -710,6 +712,37 @@ $("nsAdd").onclick=async()=>{
   $("nsAdd").disabled=false;
 };
 
+/* ---- 입장 확인 함수가 예전 것인지 확인 ----
+   예전 student_login 은 "예외 명단이 비어 있으면 전원 통과, 하나라도 있으면
+   명단에 있는 사람만" 이었다. 이 상태에서 예외를 한 명 넣으면 나머지 학생이
+   모두 잠긴다. 그래서 SQL 을 적용하기 전에는 예외 추가를 막는다.
+   판별: 예전 함수만 reason 으로 'open' 을 돌려준다. */
+let loginFnOld=false;
+async function checkLoginFn(){
+  if(!sb) return;
+  try{
+    const {data,error}=await sb.rpc("student_login",{p_name:"__확인용__",p_phone:"0000"});
+    if(error)throw error;
+    const r=Array.isArray(data)?data[0]:data;
+    loginFnOld = r && r.reason==="open";
+  }catch(e){ console.warn("입장 함수 확인 실패",e); loginFnOld=false; }
+  const w=$("excWarn");
+  if(loginFnOld){
+    w.classList.remove("hidden");
+    w.innerHTML=`<b>⚠ 지금은 예외를 추가하면 안 됩니다.</b><br>
+      입장 확인 함수가 아직 예전 것이라, 여기에 학생을 <b>한 명이라도 넣으면
+      나머지 학생 전원이 로그인할 수 없게 됩니다.</b><br>
+      Supabase → SQL Editor 에서
+      <code style="background:#fff;padding:1px 5px;border-radius:4px">20260823_login_via_score_system.sql</code>
+      을 실행한 뒤에 쓰세요.`;
+  }else{
+    w.classList.add("hidden");
+  }
+  $("rAdd").disabled=loginFnOld;
+  $("rName").disabled=loginFnOld;
+  $("rPhone").disabled=loginFnOld;
+}
+
 /* ---- 단어 사이트 전용 예외 명단 ---- */
 async function loadExceptions(){
   if(!sb)return;
@@ -742,6 +775,7 @@ function renderExceptions(){
   });
 }
 $("rAdd").onclick=async()=>{
+  if(loginFnOld){ alert("입장 확인 SQL 을 먼저 적용해 주세요.\n지금 추가하면 다른 학생들이 로그인할 수 없게 됩니다."); return; }
   const name=$("rName").value.trim(), phone=$("rPhone").value.trim();
   const msg=$("rMsg"); msg.style.color="var(--wrong)";
   if(!name){ msg.textContent="이름을 입력해 주세요."; return; }
