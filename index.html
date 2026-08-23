@@ -1089,6 +1089,8 @@ const VOCAB_DATA = {
 const favorites = new Set();
 // wrongStore: persistent wrong words across sessions, Set of word_id
 const wrongStore = new Set();
+// wrongOk: 틀린 단어를 한 번 맞힌 상태 (두 번 연속 맞히면 자동 제외, kind: wrong_ok)
+const wrongOk = new Set();
 // 주관식에서 "정답으로 인정된 답" — "그룹|DAY|단어|정규화답"
 const aliasOwn    = new Set();   // 이 학생이 스스로 인정한 답
 const aliasGlobal = new Set();   // 선생님이 모든 학생에게 인정해 준 답
@@ -2197,15 +2199,44 @@ function lockAnswer(){
   $("ansInput").disabled=true;
   $("ansSubmit").disabled=true;
 }
-function markCorrect(){
+/* 틀린 단어 자동 제외 — 어떤 퀴즈에서든 2번 연속 맞히면 목록·기록에서 뺀다.
+   중간에 틀리면 연속이 끊겨 처음부터 다시 센다.
+   반환: "removed"(이번에 제외됨) | "first"(연속 1번째) | null */
+function noteWrongResult(it, ok){
+  const k=favKey(it.group,it.day,it.w);
+  if(ok){
+    if(!wrongStore.has(k)) return null;
+    if(wrongOk.has(k)){
+      wrongOk.delete(k);   syncDelete("wrong_ok",k);
+      wrongStore.delete(k); syncDelete("wrong",k);
+      return "removed";
+    }
+    wrongOk.add(k); syncUpsert("wrong_ok",it);
+    return "first";
+  }
+  if(wrongOk.has(k)){ wrongOk.delete(k); syncDelete("wrong_ok",k); }
+  if(!wrongStore.has(k)){ wrongStore.add(k); syncUpsert("wrong",it); }
+  return null;
+}
+function streakNote(r){
+  return r==="removed" ? "🎉 2번 연속 정답! 틀린 단어에서 제외했어요."
+       : r==="first"   ? "🔁 틀린 단어예요. 한 번 더 맞히면 목록에서 빠져요."
+       : "";
+}
+function markCorrect(it){
   state.quiz.score++;
   $("quizScore").textContent=`점수 ${state.quiz.score} / ${state.quiz.order.length}`;
+  const note=streakNote(noteWrongResult(it,true));
+  if(note){
+    const f=$("ansFeed");
+    if(!f.classList.contains("hidden"))
+      f.insertAdjacentHTML("beforeend",`<div style="margin-top:9px;font-size:13.5px;font-weight:700">${note}</div>`);
+  }
   showNext();
 }
 function markWrong(it){
   state.quiz.wrong.push(it);
-  const k=favKey(it.group,it.day,it.w);
-  if(!wrongStore.has(k)){ wrongStore.add(k); syncUpsert("wrong",it); }
+  noteWrongResult(it,false);
   showNext();
 }
 function showNext(){
@@ -2315,7 +2346,7 @@ function renderVerdict(res,it,raw){
       exact ? model
             : `<b>‘${esc(raw.trim())}’</b>도 같은 뜻으로 인정했어요.<br>${model}${aiLine}`,
       bar);
-    markCorrect();
+    markCorrect(it);
     return;
   }
 
@@ -2360,7 +2391,7 @@ function renderVerdict(res,it,raw){
       if(!aliasOwn.has(k)){ aliasOwn.add(k); syncAlias("alias",it,raw); }
       feedback("ok","⭕ 정답으로 인정했어요",
         `다음부터 <b>‘${esc(raw.trim())}’</b>도 이 단어의 정답으로 인정돼요.<br>${model}`, res.score);
-      markCorrect();
+      markCorrect(it);
     };
     no.onclick=()=>{ btns.remove();
       feedback("no","❌ 오답으로 처리했어요", model, res.score);
@@ -2400,13 +2431,15 @@ function answerQuiz(btn,chosen,correct){
   const q=state.quiz; if(q.answered)return; q.answered=true;
   const all=$("quizOpts").querySelectorAll(".opt");
   all.forEach(b=>{b.disabled=true; if(b.textContent===correct.m)b.classList.add("correct");});
-  if(chosen.m===correct.m){q.score++;}
-  else{
+  let note="";
+  if(chosen.m===correct.m){
+    q.score++;
+    note=streakNote(noteWrongResult(correct,true));
+  }else{
     btn.classList.add("wrong"); q.wrong.push(correct);
-    const k=favKey(correct.group,correct.day,correct.w);
-    if(!wrongStore.has(k)){wrongStore.add(k); syncUpsert("wrong",correct);}
+    noteWrongResult(correct,false);
   }
-  $("quizScore").textContent=`점수 ${q.score} / ${q.order.length}`;
+  $("quizScore").textContent=`점수 ${q.score} / ${q.order.length}`+(note?`  ·  ${note}`:"");
   $("quizNext").classList.remove("hidden");
 }
 $("quizNext").onclick=()=>{
@@ -2483,6 +2516,10 @@ function openList(kind){
       const row=document.createElement("div"); row.className="vrow";
       row.innerHTML=`<span class="vw">${esc(it.w)}</span><span class="vp">${esc(it.p||"")}</span><span class="vm">${esc(it.m)}</span>`;
       if(kind==="wrong"){
+        // 한 번 맞혀 둔 단어는 표시해 준다 (한 번 더 맞히면 자동 제외)
+        if(wrongOk.has(favKey(it.group,it.day,it.w)))
+          row.querySelector(".vm").insertAdjacentHTML("beforeend",
+            ` <span style="font-size:11.5px;color:var(--accent);font-weight:700">✓ 1/2</span>`);
         // 다 외운 단어는 목록에서 제외한다 (기록에서도 지운다)
         const del=document.createElement("button");
         del.style.cssText="border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--ink-soft);flex:none";
@@ -2490,6 +2527,7 @@ function openList(kind){
         del.onclick=()=>{
           const k=favKey(it.group,it.day,it.w);
           wrongStore.delete(k); syncDelete("wrong",k);
+          if(wrongOk.has(k)){ wrongOk.delete(k); syncDelete("wrong_ok",k); }
           openList("wrong");
         };
         row.appendChild(del);
@@ -2573,7 +2611,7 @@ async function doLogin(){
   show("home");
 }
 function logout(){
-  favorites.clear(); wrongStore.clear(); aliasOwn.clear(); aliasGlobal.clear(); aliasAsked.clear();
+  favorites.clear(); wrongStore.clear(); wrongOk.clear(); aliasOwn.clear(); aliasGlobal.clear(); aliasAsked.clear();
   student.key=null; student.name=null;
   $("whoami").classList.add("hidden");
   $("loginName").value=""; $("loginPhone").value="";
@@ -2585,10 +2623,11 @@ async function loadProgress(){
     const {data,error}=await sb.from("progress")
       .select("kind,word_id").eq("student_key",student.key);
     if(error)throw error;
-    favorites.clear(); wrongStore.clear(); aliasOwn.clear();
+    favorites.clear(); wrongStore.clear(); wrongOk.clear(); aliasOwn.clear();
     (data||[]).forEach(r=>{
       if(r.kind==="fav") favorites.add(r.word_id);
       else if(r.kind==="wrong") wrongStore.add(r.word_id);
+      else if(r.kind==="wrong_ok") wrongOk.add(r.word_id);
       else if(r.kind==="alias"||r.kind==="alias_ai") aliasOwn.add(r.word_id);
     });
   }catch(e){ console.warn("loadProgress 실패", e); }
