@@ -5,6 +5,7 @@
 - `index.html` — 학생용 (플래시카드 · 객관식 퀴즈 · **주관식 퀴즈** · 단어장 · 즐겨찾기)
 - `admin.html` — 선생님용 (학생별 즐겨찾기 · 틀린 단어 · 주관식 인정 답안 관리)
 - `supabase/functions/judge-meaning/` — (선택) AI 채점용 Edge Function
+- `setup-ai.sh` — AI 채점 켜기 (키 등록 + 함수 배포를 한 번에)
 
 ## 주관식 퀴즈 (뜻 직접 입력)
 
@@ -94,19 +95,29 @@ API 키는 브라우저에 두면 그대로 노출되므로, Supabase Edge Funct
 
 ### 배포 방법
 
+> **API 키는 절대 `index.html` 이나 저장소에 넣지 마세요.**
+> `index.html` 에 넣으면 학생이 소스 보기로 그대로 가져갈 수 있고,
+> 커밋하면 GitHub 기록에 영원히 남습니다. 키는 Supabase 환경변수에만 둡니다.
+
+한 번에 끝내려면 (Supabase CLI 로그인 후):
+
 ```bash
-# 1) Supabase CLI 로그인 & 프로젝트 연결
-supabase login
+supabase login          # 처음 한 번만
+./setup-ai.sh AIzaSy...발급받은_키
+```
+
+키 등록 → 함수 배포 → `index.html` 의 `AI_JUDGE_URL` 설정까지 알아서 합니다.
+키는 화면에도 파일에도 남기지 않습니다.
+
+직접 하려면:
+
+```bash
 supabase link --project-ref uxzsleryzpjaoqciyqvs
-
-# 2) Gemini API 키 등록 (https://aistudio.google.com/apikey 에서 발급)
 supabase secrets set GEMINI_API_KEY=발급받은_키
-
-# 3) 함수 배포
 supabase functions deploy judge-meaning
 ```
 
-배포하면 나오는 주소를 `index.html` 위쪽에 넣으면 끝입니다.
+그리고 `index.html` 위쪽 주소를 채웁니다.
 
 ```js
 const AI_JUDGE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning";
@@ -114,6 +125,10 @@ const AI_SHARE_ACCEPTED = true;   // AI가 인정한 답을 모든 학생에게 
 ```
 
 비워 두면(`""`) AI 없이 규칙 채점만 합니다. 언제든 껐다 켤 수 있습니다.
+
+**키 발급**: https://aistudio.google.com/apikey → "API 키 만들기".
+`AIzaSy` 로 시작하는 39자입니다. `AQ.` 로 시작하거나 `ya29.` 로 시작하는 값은
+OAuth 토큰이라 이 API 에서는 동작하지 않습니다.
 
 선택 환경변수:
 

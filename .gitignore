@@ -1,0 +1,8 @@
+# 비밀 값은 저장소에 넣지 않습니다
+.env
+.env.*
+*.env
+supabase/.env
+supabase/functions/.env
+*.key
+.supabase/
