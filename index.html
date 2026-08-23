@@ -2068,7 +2068,10 @@ function gradeAnswer(answer, item, others){
   const ap = mine.score<1 ? addedParticle(answer,item) : null;
   if(ap) return {verdict:"pos", score:mine.score, matched:ap.want||item.m, particle:ap.particle};
 
-  if(mine.score>=GRAY && mine.score<1 && !posOk(answer,item))
+  // 답의 품사가 교재의 뜻과 다른가 — 점수와 무관하게 기록해서 AI 에게 알린다
+  const posBad = mine.score<1 && !posOk(answer,item);
+
+  if(mine.score>=GRAY && posBad)
     // posOnly: 뜻은 통하는데 품사만 다르다는 뜻.
     // 그 영어 단어가 사전에서 그 품사로도 쓰이는지 AI 에게 물어본다
     // (demand 는 교재에 "요구"(명사)만 있어도 "요구하다"(동사) 가 사전에 있다).
@@ -2083,12 +2086,13 @@ function gradeAnswer(answer, item, others){
   const out={score:mine.score, matched:mine.matched};
   // 같은 범위의 다른 단어 뜻을 (거의) 그대로 적은 경우
   if(bestOther>=0.98 && bestOther>mine.score+0.02){
-    out.other=otherItem;
+    out.other=otherItem; out.posMismatch=posBad;
     // 내 답도 어느 정도 통하면 "비슷함"으로 두고 학생이 직접 판단하게 한다
     out.verdict = mine.score>=GRAY ? "close" : "wrong";
     return out;
   }
   out.verdict = mine.score>=ACCEPT ? "correct" : (mine.score>=GRAY ? "close" : "wrong");
+  out.posMismatch = posBad;      // AI 판정 시 품사 규칙을 강제 적용하게 한다
   return out;
 }
 
@@ -2215,7 +2219,7 @@ async function judgeWithAI(item,answer,formMismatch){
       signal:ctl.signal
     });
     const d=await r.json().catch(()=>({}));
-    if(!r.ok || !["correct","close","wrong"].includes(d.verdict))
+    if(!r.ok || !["correct","close","wrong","pos"].includes(d.verdict))
       throw new Error(d.error||("HTTP "+r.status));
     aiFailStreak=0;
     aiCache.set(key,d);
@@ -2246,16 +2250,17 @@ async function submitAnswer(){
   const qi=q.i;
 
   // 사전에 없는 표현일 수 있으므로 애매하거나 틀린 답만 AI에게 한 번 더 물어본다
+  const formFlag = res.posOnly || res.posMismatch;
   if(AI_JUDGE_URL && (res.verdict==="close" || res.verdict==="wrong" || res.posOnly)){
     feedback("maybe","🤖 뜻을 확인하는 중…",
       `내 답: <b>${esc(raw.trim())}</b><br><span style="color:var(--ink-soft);font-size:13.5px">${
-        res.posOnly ? "사전에 그 품사의 뜻이 있는지" : "사전에 없는 표현인지"} 확인하고 있어요.</span>`);
-    const ai=await judgeWithAI(it,raw,res.posOnly);
+        formFlag ? "사전에 그 품사의 뜻이 있는지" : "사전에 없는 표현인지"} 확인하고 있어요.</span>`);
+    const ai=await judgeWithAI(it,raw,formFlag);
     if(state.quiz!==q || q.i!==qi) return;        // 그 사이 다른 퀴즈로 옮겨갔으면 중단
     if(ai){
       // AI 가 품사/형태 문제라고 하면 학생 판단 없이 바로 오답
       // 품사 때문에 물어본 건인데 AI 도 애매하다고 하면 오답으로 굳힌다 (자가 판단 금지)
-      if(ai.verdict==="pos" || (res.posOnly && ai.verdict==="close")){
+      if(ai.verdict==="pos" || (formFlag && ai.verdict==="close")){
         res.verdict="pos"; res.aiReason=ai.reason||""; res.byAI=true;
         renderVerdict(res,it,raw); return;
       }
@@ -2307,7 +2312,7 @@ function renderVerdict(res,it,raw){
       ? `<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. ${posHint(res.need)}`
       : `<b>‘${esc(sample)}’</b> 처럼 같은 형태로 써야 해요.`;
     feedback("no", res.particle ? "❌ 조사를 빼 주세요" : (lbl ? "❌ 품사가 달라요" : "❌ 형태가 달라요"),
-      `${line}<br>내 답: <b>${esc(raw.trim())}</b><br>${model}`);
+      `${line}<br>내 답: <b>${esc(raw.trim())}</b><br>${model}${aiLine}`);
     markWrong(it);
     return;
   }

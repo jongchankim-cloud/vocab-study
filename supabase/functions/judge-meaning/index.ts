@@ -50,7 +50,9 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
             교재에 안 적혀 있어도 사전에 있는 뜻이면 지엽적인 뜻이라도 인정한다.
             (예: address 에 "연설하다", "말을 걸다" — 교재에 "다루다" 만 있어도 정답)
             사전이 달라 표현만 다른 경우(예: "나중에" / "추후에"),
-            같은 뜻의 다른 낱말, 어미·조사만 다른 경우, 더 풀어 쓴 설명도 모두 포함한다.
+            같은 뜻의 다른 낱말, 같은 품사 안에서의 활용형, 더 풀어 쓴 설명도 포함한다.
+            단, 아래 품사 규칙이 항상 우선한다 — 의미가 같아도 품사·형태가 다르면
+            correct 가 아니다.
 - close   : 뜻이 겹치기는 하지만 범위가 지나치게 넓거나 좁아 애매하다.
 - wrong   : 그 단어의 뜻이 아니다. 특히 혼동하기 쉬운 다른 영어 단어의 뜻을 적은 경우
             (예: subsequently 에 "따라서")는 반드시 wrong 이다.
@@ -67,9 +69,12 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
    예: address 는 교재에 "다루다" 만 있어도 명사 "주소·연설" 이 사전에 있다.
 
 2) 그 영어 단어에 그런 품사·뜻이 사전에 없다면, 뜻이 아무리 비슷해 보여도 "pos" 다.
+   의미가 통한다는 이유로 correct 를 주면 안 된다.
    예: acquire 는 동사뿐이라 명사 "획득" 은 pos.
    예: in summary 는 부사구라서 명사 "요약" 은 pos.
    예: atom 은 명사뿐이라 "원자이다" 는 pos.
+   예: less than 은 "~ 미만의" 라는 관형 표현이지 동사가 아니므로,
+       서술형 "~보다 작다" 는 뜻이 같아도 pos.
 
 "pos" 는 학생이 스스로 정답이라고 뒤집을 수 없게 바로 오답 처리된다.
 품사 문제에 close 를 쓰면 안 된다. correct 아니면 pos 로만 답해라.
