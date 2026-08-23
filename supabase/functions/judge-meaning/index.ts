@@ -62,6 +62,8 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
   예: atom 은 명사뿐 → "원자이다" 는 pos
   예: in summary 는 부사구 → 명사 "요약" 은 pos
   예: less than 은 "~ 미만의" 라는 관형 표현 → 서술형 "~보다 작다" 는 pos
+  예: momentary 는 형용사 "순간적인" 뿐 → 부사형 "순간적으로" 는 pos
+      (그건 momentarily 의 뜻이다. 관형형과 부사형은 다른 품사다)
 품사 문제는 correct 아니면 pos 다. close 를 쓰지 마라.
 
 [규칙 3 — 같은 뜻의 다른 표현은 인정]
