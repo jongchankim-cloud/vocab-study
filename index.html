@@ -644,7 +644,7 @@ const VOCAB_DATA = {
       ],
       "1-2509-33": [
         {w:"uncertainty", m:"불확실성"},
-        {w:"member of the", m:"일반 대중public"},
+        {w:"member of the public", m:"일반 대중"},
         {w:"appreciate", m:"이해하다[인식하다]"},
         {w:"significance", m:"중요성[의미]"},
         {w:"relative", m:"상대적인"},
@@ -868,7 +868,7 @@ const VOCAB_DATA = {
       ],
       "교과서 1-2": [
         {w:"signal", m:"신호"},
-        {w:"to make matters", m:"설상가상으로worse"},
+        {w:"to make matters worse", m:"설상가상으로"},
         {w:"nearly", m:"거의"},
         {w:"dead", m:"(배터리가) 방전된"},
         {w:"spot", m:"장소[지점]"},
@@ -917,7 +917,8 @@ const VOCAB_DATA = {
         {w:"feature", m:"특징, 지형적 특성"},
         {w:"guess", m:"추측하다"},
         {w:"valley", m:"계곡, 골짜기"},
-        {w:"ash", m:"재 a second night 이틀째 밤"}
+        {w:"ash", m:"재"},
+        {w:"a second night", m:"이틀째 밤"}
       ],
       "교과서 1-4": [
         {w:"final step", m:"최종 단계"},
@@ -964,9 +965,10 @@ const VOCAB_DATA = {
         {w:"development", m:"발전"},
         {w:"medicine", m:"의학"},
         {w:"attend", m:"다니다[입학하다]"},
-        {w:"accept", m:"받아들이다[입학을 허가  하다]"},
-        {w:"have no choice", m:"~할 수밖에 없다but to"},
-        {w:"It is not until ~", m:"~하고 나서야 비로소~ that ...  …하다 career  경력[직업]"}
+        {w:"accept", m:"받아들이다[입학을 허가하다]"},
+        {w:"have no choice but to", m:"~할 수밖에 없다"},
+        {w:"It is not until ~ that ...", m:"~하고 나서야 비로소 …하다"},
+        {w:"career", m:"경력[직업]"}
       ],
       "교과서 2-2": [
         {w:"real-life", m:"실제의"},
@@ -1359,15 +1361,25 @@ function parseWord(w){
 // 이것으로 끝나면 확실히 용언(동사·형용사)
 const VERB_ONLY_END=["하다","되다","이다","시키다","당하다","스럽다","스러운","스럽게","롭다","로운","답다","다운",
                      "적인","적으로","하는","되는","했다","됐다","되었다","하기","되기","하여","해서","한다",
-                     "한","인","운","함","됨"];
+                     "한","인","운"];
 // 조사일 수도, 어미일 수도 있어 양쪽 다 가능한 것 ("짐은"=명사+조사, "넓은"=형용사)
-const AMBIG_END=["은","는","이","가","을","를","의","에","음","기"];
+const AMBIG_END=["은","는","이","가","을","를","의","에"];
+/* 명사형(-ㅁ/-음/-기, "포함"·"버림"·"얻음")은 체언으로 본다.
+   "포함하다" 문제에 "포함" 이라고 쓰면 오답이어야 하기 때문이다.
+   ("함","기" 를 용언 표지로 잡으면 포함·연기·경기 같은 명사가 함께 걸린다) */
+
+/* 활용형 어미 — "요약하자면", "감소하면", "얻으면" 같은 형태를 용언으로 잡는다.
+   "화면"·"사고"·"측면" 같은 진짜 명사를 잘못 잡지 않도록,
+   앞에 하/되/시키 같은 표지가 오거나 '으-' 로 이어지는 경우만 본다. */
+const VERB_CONJ_RE=/.+(하|되|시키|당하)(자면|면서|면|며|고서|고|지만|니까|도록|거나|든지|여서|여야|여|야|지|게|는|니|자|어|아)$/;
+const VERB_LINK_RE=/(으면|으며|으니|으므로|어서|아서|여서|어야|아야|지만|도록|거나|든지|어도|아도|았고|었고)$/;
 
 function posSet(raw){
   const t=normKo(raw);
   const out=new Set();
   if(!t) return out;
   if(/다$/.test(t)){ out.add("용언"); return out; }        // ~다 로 끝나면 용언
+  if(VERB_CONJ_RE.test(t) || VERB_LINK_RE.test(t)){ out.add("용언"); return out; }
   for(const e of VERB_ONLY_END){
     if(t.length>e.length && t.endsWith(e)){ out.add("용언"); return out; }
   }
@@ -1408,11 +1420,11 @@ function posOk(answer,item){
   for(const c of posSet(answer)) if(need.has(c)) return true;
   return false;
 }
+/* 품사 이름은 선생님이 p 를 적어 둔 경우에만 쓴다.
+   뜻에서 유추한 경우에는 이름 대신 모범답안의 형태를 보여 준다
+   ("요약하자면" 을 "명사" 라고 부르면 오히려 헷갈린다). */
 function neededPosLabel(item){
-  if(POS_NEED[item.p]) return posLabel(item.p);
-  const need=neededPos(item);
-  if(need.size!==1) return "";
-  return need.has("용언") ? "동사·형용사" : "명사";
+  return POS_NEED[item.p] ? posLabel(item.p) : "";
 }
 
 /* ---- 동의어 사전 (자주 나오는 뜻 묶음) ---- */
@@ -1865,6 +1877,22 @@ function pairScore(ans,ref){
   return Math.min(best,1);
 }
 
+/* "포함[수반]하다" 처럼 대괄호로 적힌 대안을 각각의 정답으로 펼친다.
+     포함[수반]하다   → 포함하다, 수반하다
+     ~을 활용[이용]하다 → ~을 활용하다, ~을 이용하다
+     선입견[사전 개념]  → 선입견, 사전 개념                                  */
+function bracketVariants(text){
+  const out=[];
+  const m=String(text||"").match(/^(.*?)\[([^\[\]]+)\](.*)$/);
+  if(!m) return out;
+  const [,before,inner,after]=m;
+  const tail=(before.match(/[가-힣A-Za-z~]+$/)||[""])[0];   // 갈아끼울 끝말
+  const head=before.slice(0,before.length-tail.length);
+  out.push((before+after).trim());                          // 대괄호를 걷어낸 형태
+  out.push((head+inner+after).trim());                      // 대괄호 안의 말로 바꾼 형태
+  return out.filter(Boolean);
+}
+
 /* ---- 단어의 정답 후보 목록 ---- */
 function prep(raw){
   return {raw:String(raw||"").trim(), n:normKo(raw), s:stemSet(raw), t:tokenStems(raw)};
@@ -1882,7 +1910,9 @@ function refVariants(meaning){
   splitMeaning(meaning).forEach(p=>{
     const bare=p.replace(/[（(\[【<{][^）)\]】>}]*[）)\]】>}]/g,"");
     if(bare!==p) push(bare);
+    bracketVariants(p).forEach(v=>{ push(v); splitMeaning(v).forEach(push); });
   });
+  bracketVariants(meaning).forEach(v=>{ push(v); splitMeaning(v).forEach(push); });
   _refCache.set(meaning,out);
   return out;
 }
@@ -1932,9 +1962,10 @@ function gradeAnswer(answer, item, others){
 
   const mine=scoreItem(item,A,answer);
 
-  /* 품사 검사 — 뜻이 맞아도 품사가 다르면 오답.
-     선생님이 적어 둔 뜻과 글자가 똑같으면(=score 1) 건너뛴다. */
-  if(mine.score<1 && !posOk(answer,item))
+  /* 품사 검사 — 뜻이 통하는데 품사만 다른 경우에만 "품사 오답" 으로 알려 준다.
+     뜻이 아예 다른 답(유사도가 낮은 답)은 그냥 오답이지 품사 문제가 아니다.
+     선생님이 적어 둔 뜻과 글자가 똑같으면(=score 1) 검사하지 않는다. */
+  if(mine.score>=GRAY && mine.score<1 && !posOk(answer,item))
     return {verdict:"pos", score:mine.score, matched:mine.matched, need:item.p};
 
   if(isAlias(item,ansN))
@@ -1970,7 +2001,7 @@ function renderQuiz(){
   const q=state.quiz; const it=q.order[q.i];
   const typing = q.mode==="type";
   $("quizWord").textContent=it.w;
-  const lbl = typing ? neededPosLabel(it) : "";
+  const lbl = typing ? neededPosLabel(it) : "";   // 유추한 품사는 표시하지 않는다
   $("quizPrompt").innerHTML = typing
     ? `이 단어의 뜻을 직접 입력하세요${lbl?` · <b>${esc(lbl)}</b>`:""}`
     : "알맞은 뜻을 고르세요";
@@ -2109,6 +2140,8 @@ async function submitAnswer(){
     const ai=await judgeWithAI(it,raw);
     if(state.quiz!==q || q.i!==qi) return;        // 그 사이 다른 퀴즈로 옮겨갔으면 중단
     if(ai){
+      // AI 가 품사/형태 문제라고 하면 학생 판단 없이 바로 오답
+      if(ai.verdict==="pos"){ res.verdict="pos"; res.aiReason=ai.reason||""; res.byAI=true; renderVerdict(res,it,raw); return; }
       res.verdict=ai.verdict;
       res.aiReason=ai.reason||"";
       res.byAI=true;
@@ -2148,12 +2181,12 @@ function renderVerdict(res,it,raw){
   // 품사가 다르면 뜻이 통해도 오답. AI 에게 묻지 않고 여기서 끝낸다.
   if(res.verdict==="pos"){
     const lbl=neededPosLabel(it);
-    const hint=res.need ? posHint(res.need)
-             : (neededPos(it).has("용언") ? "‘~하다 / ~한’ 처럼 <b>서술하는 말</b>로 써 주세요."
-                                          : "‘~하다’를 빼고 <b>명사</b>로 써 주세요.");
-    feedback("no","❌ 품사가 달라요",
-      `${lbl?`<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. `:""}${hint}<br>
-       내 답: <b>${esc(raw.trim())}</b><br>${model}`);
+    const sample=res.matched||it.m;
+    const line = lbl
+      ? `<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. ${posHint(res.need)}`
+      : `<b>‘${esc(sample)}’</b> 처럼 같은 형태로 써야 해요.`;
+    feedback("no", lbl ? "❌ 품사가 달라요" : "❌ 형태가 달라요",
+      `${line}<br>내 답: <b>${esc(raw.trim())}</b><br>${model}`);
     markWrong(it);
     return;
   }
