@@ -1484,11 +1484,25 @@ function addedParticle(answer,item){
   const a=normKo(answer);
   const refs=refVariants(answerText(item));
   if(refs.some(v=>v.n===a)) return null;          // 뜻 그대로면 통과
+
+  // (1) 조사를 떼면 교재 뜻과 정확히 같은 경우 — "기회" 에 "기회의"
   for(const p of TRAIL_PARTICLE){
     if(a.length>p.length && a.endsWith(p)){
       const bare=a.slice(0,-p.length);
       const hit=refs.find(v=>v.n===bare);
       if(hit) return {particle:p, want:hit.raw};
+    }
+  }
+
+  /* (2) 교재 뜻이 명사인데 답이 조사로 끝나는 경우 — "가장자리" 에 "모서리는"
+     사전에 있는 다른 뜻이라도 조사가 붙어 있으면 형태가 틀린 것이다.
+     · 뜻이 명사일 때만 본다. 용언이면 "폭넓은" 처럼 어미일 수 있다.
+     · 조사를 뗀 나머지가 두 글자 이상일 때만 본다.
+       ("차이", "정의" 처럼 조사처럼 끝나는 두 글자 명사를 잘못 잡지 않도록) */
+  const need=neededPos(item);
+  if(need.size===1 && need.has("체언")){
+    for(const p of NOUN_ONLY_END.concat(["은","는"])){
+      if(a.endsWith(p) && a.length-p.length>=2) return {particle:p, want:null};
     }
   }
   return null;
@@ -2052,7 +2066,7 @@ function gradeAnswer(answer, item, others){
 
   // 뜻은 맞는데 조사를 붙인 경우 — 사전에 물어볼 것도 없이 형태 오답
   const ap = mine.score<1 ? addedParticle(answer,item) : null;
-  if(ap) return {verdict:"pos", score:mine.score, matched:ap.want, particle:ap.particle};
+  if(ap) return {verdict:"pos", score:mine.score, matched:ap.want||item.m, particle:ap.particle};
 
   if(mine.score>=GRAY && mine.score<1 && !posOk(answer,item))
     // posOnly: 뜻은 통하는데 품사만 다르다는 뜻.
@@ -2286,7 +2300,9 @@ function renderVerdict(res,it,raw){
     const lbl=neededPosLabel(it);
     const sample=res.matched||it.m;
     const line = res.particle
-      ? `조사 <b>‘${esc(res.particle)}’</b>를 빼고 <b>‘${esc(sample)}’</b>라고 써 주세요.`
+      ? (res.matched && res.matched!==it.m
+          ? `조사 <b>‘${esc(res.particle)}’</b>를 빼고 <b>‘${esc(res.matched)}’</b>라고 써 주세요.`
+          : `조사 <b>‘${esc(res.particle)}’</b>를 빼고 써 주세요. 뜻만 적으면 됩니다.`)
       : lbl
       ? `<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. ${posHint(res.need)}`
       : `<b>‘${esc(sample)}’</b> 처럼 같은 형태로 써야 해요.`;
