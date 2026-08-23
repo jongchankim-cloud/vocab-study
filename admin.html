@@ -132,6 +132,16 @@
       </div>
       <div id="studentList"></div>
     </div>
+
+    <div class="panel" id="aiPanel" style="margin-top:16px">
+      <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <h2 style="font-size:18px;font-weight:800">🤖 AI가 인정한 답안</h2>
+        <span class="count" id="aiCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
+        <button class="refresh" id="aiToggle" style="margin-left:auto;padding:8px 14px">펼치기</button>
+      </div>
+      <p class="note">AI가 "같은 뜻"이라고 판정해 <b>모든 학생</b>에게 적용된 답안입니다. 잘못된 것이 있으면 지워 주세요.</p>
+      <div id="aiBody" class="hidden"></div>
+    </div>
   </section>
 
   <!-- DETAIL -->
@@ -172,8 +182,10 @@ function show(n){screens.forEach(s=>$("screen-"+s).classList.toggle("hidden",s!=
 let ALL=[];            // all rows
 let STUDENTS=[];       // [{key,name,fav:[],wrong:[],alias:[]}]
 let current=null;
-const ALIAS_OWNER="__ALIAS__";   // 모든 학생에게 적용되는 인정 답안 저장용 가상 계정
-const GLOBAL=new Set();          // 전체 인정된 word_id
+const ALIAS_OWNER="__ALIAS__";      // 선생님이 승인한 공통 인정 답안 가상 계정
+const ALIAS_AI_OWNER="__ALIAS_AI__"; // AI가 인정해 공유된 답안 가상 계정
+const GLOBAL=new Set();            // 전체 인정된 word_id
+let AI_ROWS=[];                    // AI가 인정한 공유 답안 목록
 
 /* ---- gate ---- */
 function tryGate(){
@@ -203,6 +215,7 @@ async function loadAll(){
     groupStudents();
     renderStats();
     renderList();
+    renderAiPanel();
   }catch(e){
     console.warn(e);
     $("studentList").innerHTML=`<div class="empty-state"><div class="e-ic">⚠️</div>데이터를 불러오지 못했어요.<br>잠시 후 새로고침해 주세요.</div>`;
@@ -211,16 +224,24 @@ async function loadAll(){
 function groupStudents(){
   const map={};
   GLOBAL.clear();
+  AI_ROWS=[];
   ALL.forEach(r=>{
-    if(r.student_key===ALIAS_OWNER){
-      if(r.kind==="alias") GLOBAL.add(r.word_id);
-      return;                       // 공통 인정 답안은 학생 명단에 넣지 않음
+    if(r.student_key===ALIAS_OWNER||r.student_key===ALIAS_AI_OWNER){
+      if(r.kind==="alias"){
+        GLOBAL.add(r.word_id);
+        if(r.student_key===ALIAS_AI_OWNER){
+          const seg=String(r.word_id||"").split("|");
+          AI_ROWS.push({word_id:r.word_id, answer:r.word||"", eng:seg[2]||"",
+                        grp:r.grp||seg[0]||"", day:r.day||seg[1]||"", at:r.updated_at});
+        }
+      }
+      return;                       // 가상 계정은 학생 명단에 넣지 않음
     }
     const k=r.student_key;
     if(!map[k]) map[k]={key:k, name:r.student_name||k, fav:[], wrong:[], alias:[]};
     if(r.kind==="fav") map[k].fav.push({word:r.word, grp:r.grp, day:r.day});
     else if(r.kind==="wrong") map[k].wrong.push({word:r.word, grp:r.grp, day:r.day});
-    else if(r.kind==="alias"||r.kind==="alias_req"){
+    else if(r.kind==="alias"||r.kind==="alias_req"||r.kind==="alias_ai"){
       const seg=String(r.word_id||"").split("|");   // 그룹|DAY|단어|정규화답
       map[k].alias.push({
         word_id:r.word_id, kind:r.kind, answer:r.word||"",
@@ -235,7 +256,8 @@ function groupStudents(){
 function renderStats(){
   const favTot=ALL.filter(r=>r.kind==="fav").length;
   const wrongTot=ALL.filter(r=>r.kind==="wrong").length;
-  const aliasTot=ALL.filter(r=>(r.kind==="alias"||r.kind==="alias_req")&&r.student_key!==ALIAS_OWNER).length;
+  const aliasTot=ALL.filter(r=>["alias","alias_req","alias_ai"].includes(r.kind)
+    && r.student_key!==ALIAS_OWNER && r.student_key!==ALIAS_AI_OWNER).length;
   $("stats").innerHTML=`
     <div class="stat"><div class="n">${STUDENTS.length}</div><div class="l">학생 수</div></div>
     <div class="stat"><div class="n">${favTot}</div><div class="l">즐겨찾기 단어 (전체)</div></div>
@@ -265,6 +287,47 @@ function renderList(){
 }
 $("search").addEventListener("input",renderList);
 $("refresh").onclick=loadAll;
+
+/* ---- AI 인정 답안 패널 ---- */
+let aiOpen=false;
+function renderAiPanel(){
+  $("aiCount").textContent=`${AI_ROWS.length}개`;
+  const body=$("aiBody");
+  body.classList.toggle("hidden",!aiOpen);
+  $("aiToggle").textContent=aiOpen?"접기":"펼치기";
+  if(!aiOpen)return;
+  body.innerHTML="";
+  if(AI_ROWS.length===0){
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">🤖</div>AI가 인정한 답안이 아직 없어요.</div>`;
+    return;
+  }
+  AI_ROWS.slice().sort((a,b)=>(a.grp||"").localeCompare(b.grp||"","ko")||(+a.day||0)-(+b.day||0))
+   .forEach(e=>{
+    const r=document.createElement("div"); r.className="arow";
+    const where=e.grp?`${esc(e.grp)}${e.day?" · DAY "+esc(e.day):""}`:"";
+    r.innerHTML=`<span class="aw">${esc(e.eng)}</span>
+      <span class="aa">${esc(e.answer)} ${where?`<small>${where}</small>`:""}</span>
+      <span class="tag glob">AI 인정</span>`;
+    const del=document.createElement("button"); del.className="abtn"; del.textContent="지우기";
+    del.onclick=async()=>{
+      del.disabled=true;
+      const ok=await deleteShared(ALIAS_AI_OWNER,e.word_id);
+      if(ok){ AI_ROWS=AI_ROWS.filter(x=>x.word_id!==e.word_id); GLOBAL.delete(e.word_id); renderAiPanel(); }
+      else { alert("지우지 못했어요. 잠시 후 다시 시도해 주세요."); del.disabled=false; }
+    };
+    r.appendChild(del); body.appendChild(r);
+  });
+}
+$("aiToggle").onclick=()=>{ aiOpen=!aiOpen; renderAiPanel(); };
+async function deleteShared(owner,wordId){
+  if(!sb)return false;
+  try{
+    const {error}=await sb.from("progress").delete()
+      .eq("student_key",owner).eq("kind","alias").eq("word_id",wordId);
+    if(error)throw error;
+    return true;
+  }catch(err){ console.warn(err); return false; }
+}
 
 /* ---- detail ---- */
 let activeTab="fav";
@@ -308,16 +371,17 @@ function renderAlias(){
     return;
   }
   const note=document.createElement("p"); note.className="note";
-  note.innerHTML=`<b>스스로 인정</b>은 학생이 "비슷한 뜻"이라고 판단해 정답 처리한 답, <b>인정 요청</b>은 오답 처리된 뒤 인정해 달라고 보낸 답입니다.<br>
+  note.innerHTML=`<b>스스로 인정</b>은 학생이 "비슷한 뜻"이라고 판단해 정답 처리한 답, <b>AI 인정</b>은 AI가 같은 뜻이라고 판정한 답,
+    <b>인정 요청</b>은 오답 처리된 뒤 인정해 달라고 보낸 답입니다.<br>
     <b>[전체 인정]</b>을 누르면 그 답이 <b>모든 학생</b>에게 정답으로 인정됩니다.`;
   body.appendChild(note);
 
   arr.slice().sort((a,b)=>(a.grp||"").localeCompare(b.grp||"","ko")||(+a.day||0)-(+b.day||0))
     .forEach(e=>{
       const r=document.createElement("div"); r.className="arow";
-      const tag = e.kind==="alias"
-        ? `<span class="tag self">스스로 인정</span>`
-        : `<span class="tag req">인정 요청</span>`;
+      const tag = e.kind==="alias" ? `<span class="tag self">스스로 인정</span>`
+                : e.kind==="alias_ai" ? `<span class="tag glob">AI 인정</span>`
+                : `<span class="tag req">인정 요청</span>`;
       const where = e.grp ? `${esc(e.grp)}${e.day?" · DAY "+esc(e.day):""}` : "";
       r.innerHTML=`<span class="aw">${esc(e.eng)}</span>
         <span class="aa">${esc(e.answer)} ${where?`<small>${where}</small>`:""}</span>${tag}`;
@@ -353,15 +417,7 @@ async function approveGlobal(e){
     return true;
   }catch(err){ console.warn(err); return false; }
 }
-async function revokeGlobal(e){
-  if(!sb)return false;
-  try{
-    const {error}=await sb.from("progress").delete()
-      .eq("student_key",ALIAS_OWNER).eq("kind","alias").eq("word_id",e.word_id);
-    if(error)throw error;
-    return true;
-  }catch(err){ console.warn(err); return false; }
-}
+async function revokeGlobal(e){ return deleteShared(ALIAS_OWNER,e.word_id); }
 
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 $("backBtn").onclick=()=>{ renderList(); show("list"); };

@@ -4,6 +4,7 @@
 
 - `index.html` — 학생용 (플래시카드 · 객관식 퀴즈 · **주관식 퀴즈** · 단어장 · 즐겨찾기)
 - `admin.html` — 선생님용 (학생별 즐겨찾기 · 틀린 단어 · 주관식 인정 답안 관리)
+- `supabase/functions/judge-meaning/` — (선택) AI 채점용 Edge Function
 
 ## 주관식 퀴즈 (뜻 직접 입력)
 
@@ -72,6 +73,71 @@ Supabase `progress` 테이블을 그대로 쓰며 스키마 변경은 필요 없
 ```js
 ["기부하다","기증하다","내놓다","희사하다"],
 ```
+
+## AI 채점 (선택) — 사전에 없는 표현까지
+
+`alt` 와 동의어 사전으로도 모든 경우를 미리 적어 둘 수는 없습니다.
+그래서 **규칙으로 "비슷함/오답"이 나온 답만** AI에게 한 번 더 물어보는 단계를 둡니다.
+
+```
+학생 답안 → 규칙·사전 채점 ─ 정답 ─────────────────→ 정답 (AI 호출 없음)
+                          └ 비슷함/오답 → AI 판정 → 정답 / 비슷함 / 오답
+```
+
+- **규칙으로 정답이 난 답은 AI를 부르지 않습니다.** 대부분의 답이 여기서 끝납니다.
+- AI가 인정한 답은 **모든 학생에게 공유 저장**되어, 같은 답은 두 번 다시 묻지 않습니다.
+  쓸수록 호출이 줄어듭니다.
+- AI 서버가 죽거나 느리면(9초) **조용히 규칙 판정으로 되돌아갑니다.** 수업이 멈추지 않습니다.
+- 선생님은 `admin.html` 목록 화면의 **🤖 AI가 인정한 답안** 패널에서 확인하고 지울 수 있습니다.
+
+API 키는 브라우저에 두면 그대로 노출되므로, Supabase Edge Function 안에 숨깁니다.
+
+### 배포 방법
+
+```bash
+# 1) Supabase CLI 로그인 & 프로젝트 연결
+supabase login
+supabase link --project-ref uxzsleryzpjaoqciyqvs
+
+# 2) Gemini API 키 등록 (https://aistudio.google.com/apikey 에서 발급)
+supabase secrets set GEMINI_API_KEY=발급받은_키
+
+# 3) 함수 배포
+supabase functions deploy judge-meaning
+```
+
+배포하면 나오는 주소를 `index.html` 위쪽에 넣으면 끝입니다.
+
+```js
+const AI_JUDGE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning";
+const AI_SHARE_ACCEPTED = true;   // AI가 인정한 답을 모든 학생에게 공유 (호출 수 절감)
+```
+
+비워 두면(`""`) AI 없이 규칙 채점만 합니다. 언제든 껐다 켤 수 있습니다.
+
+선택 환경변수:
+
+| 이름 | 기본값 | 설명 |
+|---|---|---|
+| `GEMINI_MODEL` | `gemini-2.5-flash-lite` | 다른 모델을 쓰고 싶을 때 |
+| `ALLOWED_ORIGIN` | `*` | CORS 허용 도메인 제한 |
+
+모델 이름이 바뀌어 실패하면 `gemini-2.0-flash-lite` → `gemini-2.5-flash` 순으로
+자동 재시도하므로 갑자기 채점이 멈추지는 않습니다.
+
+### 비용
+
+Gemini 2.5 Flash-Lite 기준 입력 $0.10 / 출력 $0.40 per 1M tokens.
+한 번 채점에 입력 약 250 · 출력 약 40 토큰이므로 **1건에 약 0.00004달러(0.06원)** 입니다.
+게다가 무료 티어가 **분당 15건 · 하루 1,000건**이라, 웬만한 학원 규모는 무료 범위 안에서 끝납니다.
+(규칙으로 정답이 난 답은 호출 자체를 하지 않고, 한 번 인정된 답은 재호출하지 않습니다.)
+
+### 안전장치
+
+- API 키는 Edge Function 환경변수에만 있고 브라우저로 내려가지 않습니다.
+- 함수는 채점 전용입니다. 프롬프트가 고정이고 출력이 `{verdict, reason}` JSON 스키마로
+  묶여 있으며 최대 출력이 120 토큰이라, 일반 챗봇처럼 악용하기 어렵습니다.
+- 답안 80자, 뜻 300자로 길이를 자릅니다.
 
 ## 단어 추가
 

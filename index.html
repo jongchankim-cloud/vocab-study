@@ -376,6 +376,13 @@ const SUPABASE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4enNsZXJ5enBqYW9xY2l5cXZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDc4MDIsImV4cCI6MjA5NzA4MzgwMn0.mt91HfP2DV4Q9gZ_0Ts-B2P6fB3PmQlLJK2XcJeKzL4";
 let sb = null;
 try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch(e){ console.warn("Supabase init 실패", e); }
+
+/* ===================== AI 채점 (선택) =====================
+   규칙·사전으로 "정답"이 나온 답은 여기까지 오지 않습니다.
+   "비슷함 / 오답"으로 나온 것만 AI에게 한 번 더 물어봅니다.
+   주소를 비워 두면 AI 채점 없이 지금까지의 규칙만으로 채점합니다.        */
+const AI_JUDGE_URL = "";      // 예: "https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning"
+const AI_SHARE_ACCEPTED = true;  // AI가 인정한 답을 모든 학생에게 공유 (같은 답은 다시 호출하지 않음 = 비용 절감)
 </script>
 <script>
 /* =====================================================================
@@ -445,6 +452,8 @@ const aliasAsked  = new Set();   // 이번 접속에서 인정 요청을 보낸 
 const student = { key:null, name:null };
 // 선생님이 승인해 모든 학생에게 적용되는 인정 답안이 저장되는 가상 계정
 const ALIAS_OWNER = "__ALIAS__";
+// AI가 인정해 모든 학생에게 공유되는 답안 (선생님이 admin 에서 지울 수 있음)
+const ALIAS_AI_OWNER = "__ALIAS_AI__";
 
 const state = {
   group:null, scopeDays:null, scopeLabel:"",
@@ -1313,7 +1322,40 @@ function josa(word,withJong,withoutJong){
 }
 function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 
-function submitAnswer(){
+/* ---- AI 채점 요청 (규칙으로 "정답"이 아닌 경우에만 호출) ---- */
+const aiCache=new Map();          // 같은 답을 두 번 묻지 않는다
+async function judgeWithAI(item,answer){
+  if(!AI_JUDGE_URL) return null;
+  const key=item.w+"|"+normKo(answer);
+  if(aiCache.has(key)) return aiCache.get(key);
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),9000);
+  try{
+    const r=await fetch(AI_JUDGE_URL,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer "+SUPABASE_ANON,
+        "apikey":SUPABASE_ANON
+      },
+      body:JSON.stringify({
+        word:item.w, pos:item.p||"", meaning:item.m,
+        alt:item.alt||"", answer:String(answer).trim()
+      }),
+      signal:ctl.signal
+    });
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok || !["correct","close","wrong"].includes(d.verdict))
+      throw new Error(d.error||("HTTP "+r.status));
+    aiCache.set(key,d);
+    return d;
+  }catch(e){
+    console.warn("AI 채점 실패 — 규칙 판정을 그대로 씁니다.", e);
+    return null;                  // 실패하면 조용히 규칙 판정으로
+  }finally{ clearTimeout(timer); }
+}
+
+async function submitAnswer(){
   const q=state.quiz;
   if(q.mode!=="type" || q.answered) return;
   const it=q.order[q.i];
@@ -1327,14 +1369,38 @@ function submitAnswer(){
   }
 
   lockAnswer();
+  const qi=q.i;
+
+  // 사전에 없는 표현일 수 있으므로 애매하거나 틀린 답만 AI에게 한 번 더 물어본다
+  if(AI_JUDGE_URL && (res.verdict==="close" || res.verdict==="wrong")){
+    feedback("maybe","🤖 뜻을 확인하는 중…",
+      `내 답: <b>${esc(raw.trim())}</b><br><span style="color:var(--ink-soft);font-size:13.5px">사전에 없는 표현인지 확인하고 있어요.</span>`);
+    const ai=await judgeWithAI(it,raw);
+    if(state.quiz!==q || q.i!==qi) return;        // 그 사이 다른 퀴즈로 옮겨갔으면 중단
+    if(ai){
+      res.verdict=ai.verdict;
+      res.aiReason=ai.reason||"";
+      res.byAI=true;
+      if(ai.verdict==="correct") res.other=null;  // AI가 인정했으면 다른 단어 안내는 지운다
+    }
+  }
+  renderVerdict(res,it,raw);
+}
+
+function renderVerdict(res,it,raw){
   const model=`정답: <b>${esc(it.m)}</b>`;
+  const aiLine = res.aiReason
+    ? `<br><span style="color:var(--ink-soft);font-size:13.5px">🤖 ${esc(res.aiReason)}</span>` : "";
+  // AI가 판정한 경우 글자 유사도 막대는 의미가 없으므로 감춘다
+  const bar = res.byAI ? undefined : res.score;
 
   if(res.verdict==="correct"){
-    const exact = res.via!=="alias" && res.score>=1;   // 뜻 그대로 쓴 경우
-    feedback("ok","⭕ 정답이에요!",
+    const exact = !res.byAI && res.via!=="alias" && res.score>=1;   // 뜻 그대로 쓴 경우
+    if(res.byAI) saveAiAlias(it,raw);                              // 다음부터는 물어보지 않는다
+    feedback("ok", res.byAI ? "⭕ 정답이에요! (뜻 확인 완료)" : "⭕ 정답이에요!",
       exact ? model
-            : `<b>‘${esc(raw.trim())}’</b>도 같은 뜻으로 인정했어요.<br>${model}`,
-      res.score);
+            : `<b>‘${esc(raw.trim())}’</b>도 같은 뜻으로 인정했어요.<br>${model}${aiLine}`,
+      bar);
     markCorrect();
     return;
   }
@@ -1343,8 +1409,8 @@ function submitAnswer(){
     const hint = res.other
       ? `<br><span style="color:var(--ink-soft);font-size:13.5px">참고: 이 답은 <b>${esc(res.other.w)}</b>의 뜻이기도 해요.</span>` : "";
     const f=feedback("maybe","🤔 비슷한 뜻 같아요",
-      `내 답: <b>${esc(raw.trim())}</b><br>${model}${hint}<br><span style="color:var(--ink-soft);font-size:13.5px">같은 뜻으로 쓴 거라면 정답으로 인정할게요. 스스로 판단해 보세요.</span>`,
-      res.score);
+      `내 답: <b>${esc(raw.trim())}</b><br>${model}${hint}${aiLine}<br><span style="color:var(--ink-soft);font-size:13.5px">같은 뜻으로 쓴 거라면 정답으로 인정할게요. 스스로 판단해 보세요.</span>`,
+      bar);
     const btns=document.createElement("div"); btns.className="fb-btns";
     const yes=document.createElement("button"); yes.className="solid"; yes.textContent="같은 뜻이에요 · 정답 인정";
     const no=document.createElement("button"); no.textContent="다른 뜻이었어요 · 오답";
@@ -1369,11 +1435,11 @@ function submitAnswer(){
   if(res.verdict==="empty"){ title="정답을 확인하세요"; }
   else if(res.other){
     const j = josa(raw.trim(),"은","는").slice(raw.trim().length);
-    body=`<b>‘${esc(raw.trim())}’</b>${j} <b>${esc(res.other.w)}</b>의 뜻이에요.<br>${model}`;
+    body=`<b>‘${esc(raw.trim())}’</b>${j} <b>${esc(res.other.w)}</b>의 뜻이에요.<br>${model}${aiLine}`;
   }else{
-    body=`내 답: <b>${esc(raw.trim())}</b><br>${model}`;
+    body=`내 답: <b>${esc(raw.trim())}</b><br>${model}${aiLine}`;
   }
-  const f=feedback("no",title,body,res.verdict==="empty"?undefined:res.score);
+  const f=feedback("no",title,body,res.verdict==="empty"?undefined:bar);
   if(res.verdict!=="empty"){
     const btns=document.createElement("div"); btns.className="fb-btns";
     const ask=document.createElement("button"); ask.className="ghost";
@@ -1524,13 +1590,13 @@ async function loadProgress(){
     (data||[]).forEach(r=>{
       if(r.kind==="fav") favorites.add(r.word_id);
       else if(r.kind==="wrong") wrongStore.add(r.word_id);
-      else if(r.kind==="alias") aliasOwn.add(r.word_id);
+      else if(r.kind==="alias"||r.kind==="alias_ai") aliasOwn.add(r.word_id);
     });
   }catch(e){ console.warn("loadProgress 실패", e); }
   // 선생님이 모든 학생에게 인정해 준 답안
   try{
     const {data,error}=await sb.from("progress")
-      .select("word_id").eq("student_key",ALIAS_OWNER).eq("kind","alias");
+      .select("word_id").in("student_key",[ALIAS_OWNER,ALIAS_AI_OWNER]).eq("kind","alias");
     if(error)throw error;
     aliasGlobal.clear();
     (data||[]).forEach(r=>aliasGlobal.add(r.word_id));
@@ -1539,18 +1605,27 @@ async function loadProgress(){
 /* 주관식 인정 답안 저장
    kind "alias"     : 학생이 스스로 같은 뜻이라고 인정한 답
    kind "alias_req" : 선생님께 인정을 요청한 답 (점수에는 영향 없음) */
-async function syncAlias(kind,item,answer){
+async function syncAlias(kind,item,answer,owner,ownerName){
   if(!sb||!student.key)return;
   setSync("busy");
   try{
     await sb.from("progress").upsert({
-      student_key:student.key, student_name:student.name,
+      student_key:owner||student.key, student_name:ownerName||student.name,
       kind, word_id:aliasKey(item,normKo(answer)),
       word:String(answer).trim(), grp:item.group, day:item.day,
       updated_at:new Date().toISOString()
     }, {onConflict:"student_key,kind,word_id"});
   }catch(e){ console.warn("alias 저장 실패", e); }
   setSync("ok");
+}
+/* AI가 인정한 답 저장 — 본인 기록 + (설정 시) 모든 학생 공유 */
+function saveAiAlias(item,answer){
+  const k=aliasKey(item,normKo(answer));
+  if(!aliasOwn.has(k)){ aliasOwn.add(k); syncAlias("alias_ai",item,answer); }
+  if(AI_SHARE_ACCEPTED && !aliasGlobal.has(k)){
+    aliasGlobal.add(k);
+    syncAlias("alias",item,answer,ALIAS_AI_OWNER,"(AI 인정 답안)");
+  }
 }
 async function syncUpsert(kind,item){
   if(!sb||!student.key)return;
