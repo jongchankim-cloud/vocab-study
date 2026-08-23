@@ -163,6 +163,33 @@
     </div>
   </section>
 
+  <!-- ROSTER -->
+  <section id="screen-roster" class="hidden">
+    <span class="back" id="rosterBack">← 명단으로</span>
+    <h1 class="title">학생 명단 관리</h1>
+    <p class="subtitle">여기에 등록된 학생만 학습 사이트에 입장할 수 있습니다.</p>
+
+    <div id="rosterBanner" style="border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:14px;line-height:1.6"></div>
+
+    <div class="panel" style="margin-bottom:16px">
+      <div class="bar">
+        <input class="search" id="rName" placeholder="이름 (예: 김채현)" style="max-width:200px">
+        <input class="search" id="rPhone" placeholder="뒷 4자리" inputmode="numeric" maxlength="4" style="max-width:120px">
+        <button class="refresh" id="rAdd" style="background:var(--accent);color:#fff;border-color:var(--accent)">+ 학생 추가</button>
+        <button class="refresh" id="rSeed">기존 학습 기록에서 가져오기</button>
+      </div>
+      <p class="note" id="rMsg" style="margin:0"></p>
+    </div>
+
+    <div class="panel">
+      <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <h2 style="font-size:18px;font-weight:800">등록된 학생</h2>
+        <span class="count" id="rCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
+      </div>
+      <div id="rosterBody"></div>
+    </div>
+  </section>
+
   <footer>능률VOCA 학습 관리 · 학원 내부용</footer>
 </div>
 
@@ -176,9 +203,11 @@ let sb=null;
 try{ sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON); }catch(e){ console.warn(e); }
 
 const $=id=>document.getElementById(id);
-const screens=["gate","list","detail"];
-function show(n){screens.forEach(s=>$("screen-"+s).classList.toggle("hidden",s!==n));window.scrollTo(0,0);
-  $("tools").innerHTML = n==="gate" ? "" : "";
+const screens=["gate","list","detail","roster"];
+function show(n){
+  screens.forEach(s=>$("screen-"+s).classList.toggle("hidden",s!==n));
+  window.scrollTo(0,0);
+  if(n==="gate") $("tools").innerHTML="";   // 잠금 화면에서만 상단 버튼을 감춘다
 }
 
 let ALL=[];            // all rows
@@ -200,7 +229,8 @@ $("gateBtn").onclick=tryGate;
 $("pin").addEventListener("keydown",e=>{if(e.key==="Enter")tryGate();});
 
 async function enter(){
-  $("tools").innerHTML='<button id="logout">잠그기</button>';
+  $("tools").innerHTML='<button id="rosterBtn">👥 명단 관리</button><button id="logout">잠그기</button>';
+  $("rosterBtn").onclick=openRoster;
   $("logout").onclick=()=>{ $("pin").value=""; show("gate"); $("pin").focus(); };
   await loadAll();
   show("list");
@@ -465,6 +495,83 @@ async function revokeGlobal(e){ return deleteShared(ALIAS_OWNER,e.word_id); }
 
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 $("backBtn").onclick=()=>{ renderList(); show("list"); };
+
+/* ---- 학생 명단 관리 ---- */
+let ROSTER=[];
+async function openRoster(){ await loadRoster(); show("roster"); }
+$("rosterBack").onclick=()=>show("list");
+
+async function loadRoster(){
+  if(!sb)return;
+  try{
+    const {data,error}=await sb.rpc("roster_list");
+    if(error)throw error;
+    ROSTER=data||[];
+  }catch(e){ console.warn(e); ROSTER=[]; $("rMsg").textContent="명단을 불러오지 못했어요."; }
+  renderRoster();
+}
+function renderRoster(){
+  $("rCount").textContent=`${ROSTER.length}명`;
+  const b=$("rosterBanner");
+  if(ROSTER.length===0){
+    b.style.border="1px solid var(--gold)"; b.style.background="#fbf4e4";
+    b.innerHTML="<b>⚠ 지금은 누구나 입장할 수 있습니다.</b><br>명단이 비어 있어서 아무 이름이나 넣어도 들어가집니다. 학생을 <b>한 명이라도 추가하면</b> 그때부터 명단에 있는 학생만 입장할 수 있습니다.";
+  }else{
+    b.style.border="1px solid var(--accent)"; b.style.background="var(--accent-soft)";
+    b.innerHTML=`<b>✓ 명단 확인이 켜져 있습니다.</b><br>등록된 ${ROSTER.length}명만 입장할 수 있고, 이름이나 번호가 다르면 막힙니다.`;
+  }
+  const body=$("rosterBody"); body.innerHTML="";
+  if(ROSTER.length===0){
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">👥</div>등록된 학생이 없어요.<br>위에서 추가하거나 [기존 학습 기록에서 가져오기] 를 눌러 보세요.</div>`;
+    return;
+  }
+  ROSTER.forEach(st=>{
+    const r=document.createElement("div"); r.className="arow";
+    r.innerHTML=`<span class="aw">${esc(st.name)}</span>
+      <span class="aa">뒷 4자리 <b>${esc(st.phone4)}</b>
+        ${st.note?`<small>${esc(st.note)}</small>`:""}</span>`;
+    const del=document.createElement("button"); del.className="abtn"; del.textContent="삭제";
+    del.onclick=async()=>{
+      if(!confirm(`${st.name} 학생을 명단에서 지울까요?\n(학습 기록은 그대로 남고, 입장만 막힙니다)`))return;
+      del.disabled=true;
+      try{
+        const {error}=await sb.rpc("roster_remove",{p_key:st.student_key});
+        if(error)throw error;
+        await loadRoster();
+      }catch(e){ console.warn(e); alert("삭제하지 못했어요."); del.disabled=false; }
+    };
+    r.appendChild(del); body.appendChild(r);
+  });
+}
+$("rAdd").onclick=async()=>{
+  const name=$("rName").value.trim(), phone=$("rPhone").value.trim();
+  const msg=$("rMsg"); msg.style.color="var(--wrong)";
+  if(!name){ msg.textContent="이름을 입력해 주세요."; return; }
+  if(!/^\d{4}$/.test(phone)){ msg.textContent="뒷 4자리를 숫자로 입력해 주세요."; return; }
+  const btn=$("rAdd"); btn.disabled=true;
+  try{
+    const {error}=await sb.rpc("roster_add",{p_name:name,p_phone:phone,p_note:null});
+    if(error)throw error;
+    $("rName").value=""; $("rPhone").value=""; $("rName").focus();
+    msg.style.color="var(--accent)"; msg.textContent=`${name} 학생을 추가했어요.`;
+    await loadRoster();
+  }catch(e){ console.warn(e); msg.textContent="추가하지 못했어요."; }
+  btn.disabled=false;
+};
+$("rPhone").addEventListener("keydown",e=>{ if(e.key==="Enter")$("rAdd").click(); });
+$("rName").addEventListener("keydown",e=>{ if(e.key==="Enter")$("rPhone").focus(); });
+$("rSeed").onclick=async()=>{
+  if(!confirm("이미 학습 기록이 있는 학생들을 명단에 넣습니다.\n지금 명단이 비어 있다면, 이 작업 이후로는 명단에 있는 학생만 입장할 수 있게 됩니다. 계속할까요?"))return;
+  const btn=$("rSeed"); btn.disabled=true;
+  try{
+    const {data,error}=await sb.rpc("roster_seed_from_progress");
+    if(error)throw error;
+    $("rMsg").style.color="var(--accent)";
+    $("rMsg").textContent=`${data??0}명을 명단에 추가했어요.`;
+    await loadRoster();
+  }catch(e){ console.warn(e); $("rMsg").style.color="var(--wrong)"; $("rMsg").textContent="가져오지 못했어요."; }
+  btn.disabled=false;
+};
 
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 
