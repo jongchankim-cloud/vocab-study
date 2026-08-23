@@ -162,6 +162,22 @@
       <div id="studentList"></div>
     </div>
 
+    <div class="panel" id="testPanel" style="margin-top:16px">
+      <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <h2 style="font-size:18px;font-weight:800">🧪 채점 테스트</h2>
+        <button class="refresh" id="testSuiteBtn" style="margin-left:auto;padding:8px 14px">검증 세트 실행 (5건)</button>
+      </div>
+      <p class="note">원하는 단어와 답을 넣어 AI 판정을 바로 확인합니다. 퀴즈에 그 단어가 나오길 기다릴 필요가 없습니다.<br>
+        (교재 뜻과 글자가 똑같은 답, 조사만 붙인 답 등은 학생 화면에서 AI 없이 먼저 걸러집니다 — 여기는 AI 판정만 봅니다)</p>
+      <div class="bar" style="flex-wrap:wrap">
+        <input class="search" id="tWord" placeholder="단어 (예: orbit, address(v))" style="max-width:190px">
+        <input class="search" id="tMean" placeholder="교재 뜻 (예: 궤도를 돌다)" style="max-width:220px">
+        <input class="search" id="tAns" placeholder="학생 답 (예: 궤도)" style="max-width:170px">
+        <button class="refresh" id="tGo" style="background:var(--accent);color:#fff;border-color:var(--accent)">판정</button>
+      </div>
+      <div id="tResult"></div>
+    </div>
+
     <div class="panel" id="aiPanel" style="margin-top:16px">
       <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <h2 style="font-size:18px;font-weight:800">🤖 AI가 인정한 답안</h2>
@@ -563,6 +579,80 @@ async function revokeGlobal(e){ return deleteShared(ALIAS_OWNER,e.word_id); }
 
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 $("backBtn").onclick=()=>{ renderList(); show("list"); };
+
+/* ---- 채점 테스트 — AI 판정을 직접 호출해 본다 ---- */
+function tParseWord(w){
+  const raw=String(w||"").trim();
+  const out={base:raw,no:[],pos:"",lock:false};
+  const m=raw.match(/^(.*?)\s*[（(]([^)）]*)[)）]\s*$/);
+  if(!m) return out;
+  const PM={v:"동",verb:"동","동":"동",n:"명",noun:"명","명":"명",a:"형",adj:"형","형":"형",ad:"부",adv:"부","부":"부"};
+  const no=[]; let pos="";
+  m[2].split(/[,，·/]/).map(x=>x.trim()).filter(Boolean).forEach(part=>{
+    const hit=part.match(/^(.*?)\s*[xX✗×]$/);
+    if(hit&&hit[1].trim()){no.push(hit[1].trim());return;}
+    const pm=PM[part.toLowerCase()]; if(pm)pos=pm;
+  });
+  if(no.length||pos) return {base:(m[1].trim()||raw),no,pos,lock:!!pos};
+  return out;
+}
+async function tJudge(word,meaning,answer){
+  const pw=tParseWord(word);
+  const r=await fetch(AI_JUDGE_URL,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON},
+    body:JSON.stringify({word:pw.base,pos:pw.pos,pos_locked:pw.lock,meaning,alt:"",
+      exclude:pw.no.join(", "),answer:String(answer).trim(),form_mismatch:false})
+  });
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.detail||d.error||("HTTP "+r.status));
+  return d;
+}
+const V_ICON={correct:"⭕ 정답",close:"🤔 애매",wrong:"❌ 오답",pos:"❌ 품사"};
+function tRow(word,meaning,answer,d,expect){
+  const got=d.verdict;
+  const okMark = expect ? (expect.includes(got) ? "✅" : "🚨 기대와 다름") : "";
+  return `<div class="arow"><span class="aw">${esc(word)}</span>
+    <span class="aa">${esc(meaning)} ← <b>${esc(answer)}</b><br>
+      <small>${esc(d.reason||"")}${d.model?` · ${esc(d.model)}`:""}</small></span>
+    <span class="tag ${got==="correct"?"self":"req"}">${V_ICON[got]||esc(got)}</span>
+    ${okMark?`<span style="font-size:12px;font-weight:700">${okMark}</span>`:""}</div>`;
+}
+$("tGo").onclick=async()=>{
+  const w=$("tWord").value.trim(), m=$("tMean").value.trim(), a=$("tAns").value.trim();
+  const box=$("tResult");
+  if(!w||!m||!a){ box.innerHTML=`<p class="note" style="color:var(--wrong)">단어·뜻·답을 모두 입력해 주세요.</p>`; return; }
+  $("tGo").disabled=true; box.innerHTML=`<p class="note">판정 중…</p>`;
+  try{ box.innerHTML=tRow(w,m,a,await tJudge(w,m,a)); }
+  catch(e){ box.innerHTML=`<p class="note" style="color:var(--wrong)">호출 실패: ${esc(e.message)}</p>`; }
+  $("tGo").disabled=false;
+};
+["tWord","tMean","tAns"].forEach(id=>$(id).addEventListener("keydown",e=>{if(e.key==="Enter")$("tGo").click();}));
+
+/* 배포 확인용 고정 세트 — 새 프롬프트가 반영됐는지 한 번에 본다 */
+const T_SUITE=[
+  {w:"orbit",       m:"궤도를 돌다",  a:"궤도",       expect:["correct"]},
+  {w:"demand",      m:"요구",        a:"요구하다",    expect:["correct"]},
+  {w:"offer",       m:"제의[제안]하다",a:"할인",       expect:["correct"]},
+  {w:"less than",   m:"~ 미만의",    a:"~보다 작다",  expect:["pos","wrong"]},
+  {w:"momentary",   m:"순간적인",    a:"순간적으로",  expect:["pos","wrong"]},
+];
+$("testSuiteBtn").onclick=async()=>{
+  const btn=$("testSuiteBtn"); btn.disabled=true;
+  const box=$("tResult"); box.innerHTML=`<p class="note">5건 판정 중… (몇 초 걸립니다)</p>`;
+  let html="", pass=0;
+  for(const t of T_SUITE){
+    try{
+      const d=await tJudge(t.w,t.m,t.a);
+      if(t.expect.includes(d.verdict)) pass++;
+      html+=tRow(t.w,t.m,t.a,d,t.expect);
+    }catch(e){ html+=`<div class="arow"><span class="aw">${esc(t.w)}</span><span class="aa" style="color:var(--wrong)">호출 실패: ${esc(e.message)}</span></div>`; }
+    box.innerHTML=html+`<p class="note">진행 중…</p>`;
+  }
+  box.innerHTML=`<p class="note" style="font-weight:700;color:${pass===T_SUITE.length?"var(--accent)":"var(--wrong)"}">
+    ${pass} / ${T_SUITE.length} 통과 ${pass===T_SUITE.length?"— 새 프롬프트가 정상 반영됐습니다":"— 🚨 표시된 건을 알려 주세요"}</p>`+html;
+  btn.disabled=false;
+};
 
 /* ---- 학생 명단 관리 — 성적 사이트(score-system) 명단을 직접 고친다 ----
    score-system 은 students 표를 anon 에 열어두지 않고 admin-api Edge Function
