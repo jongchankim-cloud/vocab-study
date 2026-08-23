@@ -24,17 +24,18 @@ USAGE
   exit 1
 fi
 
-# 키 모양 확인 — 다른 종류의 구글 토큰을 넣는 실수가 잦습니다
+# 키 모양 확인 — 구글은 AIza(기존)와 AQ.(신형 인증 키) 두 가지를 발급합니다
 case "$KEY" in
-  AIza*) : ;;
+  AIza*) echo "▸ 기존 형식 API 키(AIza…)" ;;
+  AQ.*)  echo "▸ 신형 인증 키(AQ.…) — Bearer 방식으로 호출합니다" ;;
+  ya29.*)
+    echo "✗ 이건 OAuth 액세스 토큰(ya29.…)이라 몇 시간 뒤 만료됩니다."
+    echo "  https://aistudio.google.com/apikey 에서 API 키를 발급해 주세요."
+    exit 1 ;;
   *)
-    echo "⚠  이 키는 Gemini API 키 모양이 아닙니다 (보통 'AIzaSy' 로 시작하는 39자)."
-    echo "   OAuth 토큰이나 다른 구글 서비스 키일 수 있습니다."
-    echo "   https://aistudio.google.com/apikey 에서 'API 키 만들기' 로 발급한 값을 넣어 주세요."
-    printf "   그래도 계속할까요? [y/N] "
+    echo "⚠  보통은 'AIza…' 또는 'AQ.…' 로 시작합니다. 계속할까요? [y/N] "
     read -r yn
-    [ "$yn" = "y" ] || [ "$yn" = "Y" ] || exit 1
-    ;;
+    [ "$yn" = "y" ] || [ "$yn" = "Y" ] || exit 1 ;;
 esac
 
 if ! command -v supabase >/dev/null 2>&1; then
@@ -53,6 +54,24 @@ echo "▸ 함수 배포 (judge-meaning)"
 supabase functions deploy judge-meaning
 
 URL="https://$REF.supabase.co/functions/v1/judge-meaning"
+
+# 배포한 함수가 실제로 Gemini 를 부를 수 있는지 바로 확인합니다
+echo "▸ 자체 점검 중…"
+ANON="$(grep -o 'const SUPABASE_ANON = "[^"]*"' "$HERE/index.html" | head -1 | cut -d'"' -f2)"
+CHECK="$(curl -sS -m 30 -H "Authorization: Bearer $ANON" "$URL?selftest=1" || true)"
+case "$CHECK" in
+  *'"ok":true'*)
+    echo "  ✓ Gemini 호출 성공"
+    echo "    $CHECK" ;;
+  "")
+    echo "  ⚠ 함수에서 응답이 없습니다. 잠시 후 아래 주소로 다시 확인해 보세요."
+    echo "    curl -H \"Authorization: Bearer \$ANON\" \"$URL?selftest=1\"" ;;
+  *)
+    echo "  ✗ 호출에 실패했습니다. 아래 내용을 확인하세요."
+    echo "    $CHECK"
+    echo "    (401 ACCESS_TOKEN_TYPE_UNSUPPORTED 이면 그 키로는 Gemini API 를 쓸 수 없습니다."
+    echo "     AI Studio 에서 키를 다시 발급하거나 다른 프로젝트의 키를 써 보세요.)" ;;
+esac
 
 # index.html 의 AI_JUDGE_URL 을 채워 넣습니다 (주소는 비밀이 아닙니다)
 if grep -q '^const AI_JUDGE_URL = ' "$HERE/index.html"; then

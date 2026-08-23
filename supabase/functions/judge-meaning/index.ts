@@ -65,7 +65,21 @@ const SCHEMA = {
   required: ["verdict", "reason"],
 };
 
-async function callGemini(model: string, prompt: string, omitThinkingConfig: boolean) {
+/* 인증 방식 — 키 종류에 따라 받는 방식이 다르다.
+   AIza… (기존 API 키)  : x-goog-api-key 헤더
+   AQ.…  (신형 인증 키)  : Authorization: Bearer
+   어느 쪽이 될지 확실치 않으므로 순서대로 시도하고, 통한 방식을 기억해 둔다. */
+type Auth = "header" | "bearer" | "query";
+let workingAuth: Auth | null = null;
+
+function authOrder(): Auth[] {
+  if (workingAuth) return [workingAuth, ...(["header", "bearer", "query"] as Auth[]).filter((a) => a !== workingAuth)];
+  return API_KEY.startsWith("AQ.")
+    ? ["bearer", "header", "query"]
+    : ["header", "query", "bearer"];
+}
+
+async function callGemini(model: string, prompt: string, auth: Auth, omitThinkingConfig: boolean) {
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
@@ -76,22 +90,92 @@ async function callGemini(model: string, prompt: string, omitThinkingConfig: boo
       ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
     },
   };
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": API_KEY },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(8000),
-    },
-  );
-  return res;
+  let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (auth === "header") headers["x-goog-api-key"] = API_KEY;
+  else if (auth === "bearer") headers["Authorization"] = `Bearer ${API_KEY}`;
+  else url += `?key=${encodeURIComponent(API_KEY)}`;
+
+  return await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
+  });
+}
+
+type Judged = { verdict: string; reason: string; model: string; auth: Auth };
+
+/** 모델 × 인증방식 × thinking 옵션을 필요한 만큼만 시도한다 */
+async function judge(prompt: string): Promise<{ ok: Judged } | { err: string }> {
+  const deadModels = new Set<string>();
+  const deadAuths = new Set<Auth>();
+  let lastErr = "설정 오류";
+
+  for (const model of MODELS) {
+    if (deadModels.has(model)) continue;
+    for (const auth of authOrder()) {
+      if (deadAuths.has(auth) || deadModels.has(model)) continue;
+      for (const omitThinkingConfig of [false, true]) {
+        let res: Response;
+        try {
+          res = await callGemini(model, prompt, auth, omitThinkingConfig);
+        } catch (e) {
+          lastErr = `${model}/${auth} ${e instanceof Error ? e.message : String(e)}`;
+          deadModels.add(model);
+          break;
+        }
+        if (res.ok) {
+          const data = await res.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+          let out: { verdict?: string; reason?: string } = {};
+          try { out = JSON.parse(text); } catch { /* 아래에서 처리 */ }
+          if (!["correct", "close", "wrong"].includes(out.verdict ?? "")) {
+            lastErr = `${model} 응답 형식 오류: ${text.slice(0, 120)}`;
+            continue;                       // thinking 옵션을 바꿔 한 번 더
+          }
+          workingAuth = auth;               // 통한 인증 방식을 기억
+          return { ok: {
+            verdict: out.verdict!,
+            reason: String(out.reason ?? "").slice(0, 80),
+            model, auth,
+          } };
+        }
+        const errText = await res.text();
+        lastErr = `${model}/${auth} ${res.status} ${errText.slice(0, 200)}`;
+        if (res.status === 401 || res.status === 403) { deadAuths.add(auth); break; }
+        if (res.status === 404) { deadModels.add(model); break; }
+        if (res.status === 400 && /thinking/i.test(errText) && !omitThinkingConfig) continue;
+        deadModels.add(model);
+        break;
+      }
+    }
+  }
+  return { err: lastErr };
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!API_KEY) return json({ error: "GEMINI_API_KEY 가 설정되지 않았습니다." }, 500);
+
+  // 배포 직후 키가 살아 있는지 확인하는 자체 점검
+  //   curl -H "Authorization: Bearer <anon key>" ".../judge-meaning?selftest=1"
+  if (req.method === "GET" && new URL(req.url).searchParams.has("selftest")) {
+    const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에"));
+    if ("ok" in r) {
+      return json({
+        ok: true,
+        message: "AI 채점이 정상 동작합니다.",
+        keyType: API_KEY.startsWith("AQ.") ? "AQ (신형 인증 키)" : "AIza (기존 API 키)",
+        model: r.ok.model,
+        auth: r.ok.auth,
+        sample: { answer: "추후에", verdict: r.ok.verdict, reason: r.ok.reason },
+      });
+    }
+    return json({ ok: false, message: "Gemini 호출에 실패했습니다.", detail: r.err }, 502);
+  }
+
+  if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
   let payload: Record<string, string>;
   try {
@@ -111,38 +195,7 @@ Deno.serve(async (req) => {
   if (!word || !meaning || !answer) return json({ error: "word, meaning, answer 필요" }, 400);
   if (!/[가-힣]/.test(answer)) return json({ verdict: "wrong", reason: "한국어 뜻이 아닙니다." });
 
-  const prompt = buildPrompt(word, pos, meaning, alt, answer);
-
-  let lastErr = "";
-  for (const model of MODELS) {
-    for (const omitThinkingConfig of [false, true]) {
-      try {
-        const res = await callGemini(model, prompt, omitThinkingConfig);
-        if (res.ok) {
-          const data = await res.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          let out: { verdict?: string; reason?: string } = {};
-          try { out = JSON.parse(text); } catch { /* 아래에서 처리 */ }
-          if (!["correct", "close", "wrong"].includes(out.verdict ?? "")) {
-            lastErr = `응답 형식 오류: ${text.slice(0, 120)}`;
-            continue;
-          }
-          return json({
-            verdict: out.verdict,
-            reason: String(out.reason ?? "").slice(0, 80),
-            model,
-          });
-        }
-        const errText = await res.text();
-        lastErr = `${model} ${res.status} ${errText.slice(0, 200)}`;
-        // thinkingConfig 를 모르는 모델이면 그 옵션 없이 한 번 더
-        if (res.status === 400 && /thinking/i.test(errText) && !omitThinkingConfig) continue;
-        break; // 다른 오류면 다음 모델로
-      } catch (e) {
-        lastErr = `${model} ${e instanceof Error ? e.message : String(e)}`;
-        break;
-      }
-    }
-  }
-  return json({ error: "판정 실패", detail: lastErr }, 502);
+  const r = await judge(buildPrompt(word, pos, meaning, alt, answer));
+  if ("ok" in r) return json(r.ok);
+  return json({ error: "판정 실패", detail: r.err }, 502);
 });

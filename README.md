@@ -126,9 +126,44 @@ const AI_SHARE_ACCEPTED = true;   // AI가 인정한 답을 모든 학생에게 
 
 비워 두면(`""`) AI 없이 규칙 채점만 합니다. 언제든 껐다 켤 수 있습니다.
 
+### 키 형식 (AIza 와 AQ.)
+
 **키 발급**: https://aistudio.google.com/apikey → "API 키 만들기".
-`AIzaSy` 로 시작하는 39자입니다. `AQ.` 로 시작하거나 `ya29.` 로 시작하는 값은
-OAuth 토큰이라 이 API 에서는 동작하지 않습니다.
+
+구글이 키 형식을 바꾸는 중이라 두 가지가 나옵니다. **둘 다 정상입니다.**
+
+| 형식 | 설명 | 호출 방식 |
+|---|---|---|
+| `AIzaSy…` | 기존 API 키 | `x-goog-api-key` 헤더 |
+| `AQ.Ab8…` | 신형 인증 키 (Authorization key) | `Authorization: Bearer` |
+
+어느 쪽이 올지 알 수 없으므로 함수가 **세 가지 방식(헤더 / Bearer / 쿼리)을
+순서대로 시도**하고, 통한 방식을 기억해 다음부터는 바로 씁니다.
+키 형식이 또 바뀌어도 손댈 일이 없습니다.
+
+`ya29.` 로 시작하는 값은 OAuth 액세스 토큰이라 몇 시간 뒤 만료됩니다. 쓰지 마세요.
+
+일부 계정에서 `AQ.` 키가 `401 ACCESS_TOKEN_TYPE_UNSUPPORTED` 를 내는 사례가
+보고되고 있습니다. 아래 자체 점검에서 바로 확인할 수 있고, 그 경우 AI Studio 에서
+키를 다시 발급하거나 다른 프로젝트의 키를 쓰면 됩니다.
+
+### 자체 점검
+
+배포한 함수가 실제로 Gemini 를 부를 수 있는지 앱을 켜지 않고 확인할 수 있습니다.
+(`setup-ai.sh` 는 배포 직후 이걸 자동으로 실행합니다.)
+
+```bash
+curl -H "Authorization: Bearer <index.html 의 SUPABASE_ANON 값>" \
+     "https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning?selftest=1"
+```
+
+정상이면 이렇게 나옵니다.
+
+```json
+{"ok":true,"message":"AI 채점이 정상 동작합니다.","keyType":"AQ (신형 인증 키)",
+ "model":"gemini-2.5-flash-lite","auth":"bearer",
+ "sample":{"answer":"추후에","verdict":"correct","reason":"..."}}
+```
 
 선택 환경변수:
 
