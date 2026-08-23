@@ -44,7 +44,7 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
 
 영어 단어: ${w}${pos ? `\n지정된 품사: ${pos}${posLocked ? " — 이 품사의 뜻만 정답으로 인정한다" : ""}` : ""}
 교재의 뜻: ${meaning}${alt ? `\n추가로 인정된 답안: ${alt}` : ""}${exclude ? `\n인정하지 않는 뜻: ${exclude}` : ""}
-학생 답안: ${answer}${formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 규칙 2를 특히 엄격하게 적용해라." : ""}
+학생 답안: ${answer}${formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 규칙 2로 판단해라 — 그 단어가 사전에서 답안의 품사로 그 뜻을 가지면 correct, 아니면 pos 다." : ""}
 
 채점 규칙 — 번호 순서대로 적용하고, 앞 규칙에서 판정이 나면 뒤는 보지 않는다.
 
@@ -55,8 +55,12 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
 [규칙 2 — 품사는 엄격하게]
 · 답에 조사가 붙으면 pos. 뜻이 "농구" 인데 "농구의", "농구와" 라고 쓰면 pos.
 · 품사가 지정되지 않았다면, 교재의 품사가 아니어도 **그 단어가 사전에서 실제로
-  가지는 품사의 뜻**이면 정답 후보다.
+  가지는 품사의 뜻**이면 정답 후보다. 어느 방향이든 같다.
   예: address — "주소", "연설하다", "다루다", "말을 걸다" 모두 correct.
+  예: orbit — 교재의 뜻이 "궤도를 돌다"(동사) 여도, 사전에 명사 "궤도" 가 있으므로
+      "궤도" 는 correct. (acquire 의 "획득" 과 다르다 — "획득" 은 acquire 의
+      사전 뜻이 아니지만, "궤도" 는 orbit 의 사전 뜻이다. 기준은 형태가 아니라
+      사전에 실려 있는가다.)
 · 그 단어가 사전에서 가지지 않는 품사·형태는 pos. 의미가 통해도 안 된다.
   예: acquire 는 동사뿐 → 명사형 "획득" 은 pos
   예: atom 은 명사뿐 → "원자이다" 는 pos
