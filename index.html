@@ -1468,6 +1468,26 @@ function neededPos(item){
   _needCache.set(key,need);
   return need;
 }
+/* 교재의 뜻에 조사만 덧붙인 답인지 확인한다.
+   "기회" 가 뜻인데 "기회의", "기회를" 이라고 쓴 경우다.
+   조사를 뗀 형태가 교재의 뜻과 정확히 같을 때만 잡으므로,
+   "폭넓은"(넓은의 유의어) 처럼 우연히 조사로 끝나는 답은 걸리지 않는다. */
+const TRAIL_PARTICLE=["으로서","으로","에게서","에게","에서","까지","부터","마다","조차","라도",
+                      "의","을","를","이","가","은","는","에","도","만","와","과","로","랑"];
+function addedParticle(answer,item){
+  const a=normKo(answer);
+  const refs=refVariants(answerText(item));
+  if(refs.some(v=>v.n===a)) return null;          // 뜻 그대로면 통과
+  for(const p of TRAIL_PARTICLE){
+    if(a.length>p.length && a.endsWith(p)){
+      const bare=a.slice(0,-p.length);
+      const hit=refs.find(v=>v.n===bare);
+      if(hit) return {particle:p, want:hit.raw};
+    }
+  }
+  return null;
+}
+
 /* 품사가 맞는가. 선생님이 적어 둔 뜻과 글자가 똑같으면 검사하지 않는다. */
 function posOk(answer,item){
   const need=neededPos(item);
@@ -2024,6 +2044,10 @@ function gradeAnswer(answer, item, others){
   if(isAlias(item,ansN))
     return {verdict:"correct", score:1, via:"alias", matched:item.m};
 
+  // 뜻은 맞는데 조사를 붙인 경우 — 사전에 물어볼 것도 없이 형태 오답
+  const ap = mine.score<1 ? addedParticle(answer,item) : null;
+  if(ap) return {verdict:"pos", score:mine.score, matched:ap.want, particle:ap.particle};
+
   if(mine.score>=GRAY && mine.score<1 && !posOk(answer,item))
     // posOnly: 뜻은 통하는데 품사만 다르다는 뜻.
     // 그 영어 단어가 사전에서 그 품사로도 쓰이는지 AI 에게 물어본다
@@ -2255,10 +2279,12 @@ function renderVerdict(res,it,raw){
   if(res.verdict==="pos"){
     const lbl=neededPosLabel(it);
     const sample=res.matched||it.m;
-    const line = lbl
+    const line = res.particle
+      ? `조사 <b>‘${esc(res.particle)}’</b>를 빼고 <b>‘${esc(sample)}’</b>라고 써 주세요.`
+      : lbl
       ? `<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. ${posHint(res.need)}`
       : `<b>‘${esc(sample)}’</b> 처럼 같은 형태로 써야 해요.`;
-    feedback("no", lbl ? "❌ 품사가 달라요" : "❌ 형태가 달라요",
+    feedback("no", res.particle ? "❌ 조사를 빼 주세요" : (lbl ? "❌ 품사가 달라요" : "❌ 형태가 달라요"),
       `${line}<br>내 답: <b>${esc(raw.trim())}</b><br>${model}`);
     markWrong(it);
     return;
