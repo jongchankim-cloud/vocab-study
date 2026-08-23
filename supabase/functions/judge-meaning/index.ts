@@ -37,12 +37,12 @@ const json = (body: unknown, status = 200) =>
   });
 
 /** 학생 답안이 표준 답안과 같은 뜻인지 묻는 프롬프트 */
-function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string) {
+function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string, formMismatch: boolean) {
   return `너는 영어 단어 시험의 채점 보조다. 학생이 쓴 우리말 뜻이 그 단어의 뜻으로 맞는지 판단해라.
 
 영어 단어: ${w}${pos ? ` (${pos})` : ""}
 교재의 뜻: ${meaning}${alt ? `\n추가로 인정된 답안: ${alt}` : ""}${exclude ? `\n인정하지 않는 뜻: ${exclude}` : ""}
-학생 답안: ${answer}
+학생 답안: ${answer}${formMismatch ? "\n\n※ 학생 답안의 품사가 교재의 뜻과 다르다. 위 품사 규칙 1) 2) 로 판단해라." : ""}
 
 판정 기준
 - pos     : 뜻은 통하지만 품사·형태가 다르다 (아래 규칙 참고)
@@ -58,14 +58,24 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
 "인정하지 않는 뜻" 에 적힌 것과 같은 뜻이면, 사전에 있는 뜻이어도 반드시 wrong 이다.
 문제에서 그 뜻은 빼고 답하라고 지정한 것이다.
 
-품사는 예외 없이 엄격하게 본다. 뜻이 통하는데 품사·형태만 다르면 verdict 는 반드시 "pos" 다.
-(학생이 스스로 정답이라고 우길 수 없게 바로 오답 처리된다. close 를 쓰면 안 된다.)
-  동사(동)  → "얻다", "획득하다" 처럼 '~다' 로 끝나야 한다. "획득", "습득" 은 명사이므로 pos.
-  형용사(형) → "정확한", "추상적인" 처럼 '~한/~인' 이거나 '~하다' 여야 한다. "추상" 은 pos.
-  명사(명)  → "능력", "부담" 처럼 명사여야 한다. "부담스럽다", "능력있다" 는 pos.
-품사가 적혀 있지 않으면 교재의 뜻과 같은 형태여야 한다
-  ("요약하자면" 이 교재의 뜻이면 "요약" 은 pos).
-reason 에는 어떤 형태로 써야 하는지 한 문장으로 적어라.
+품사에 대한 규칙 — 순서대로 판단해라.
+
+1) 학생 답안의 품사가 교재의 뜻과 다르더라도, **그 영어 단어가 사전에서 실제로 그 품사로
+   쓰이고 그런 뜻을 가진다면 correct 다.**
+   예: demand 는 교재에 "요구"(명사) 만 있어도, 사전에 동사 "요구하다" 가 있으므로
+       "요구하다" 는 correct.
+   예: address 는 교재에 "다루다" 만 있어도 명사 "주소·연설" 이 사전에 있다.
+
+2) 그 영어 단어에 그런 품사·뜻이 사전에 없다면, 뜻이 아무리 비슷해 보여도 "pos" 다.
+   예: acquire 는 동사뿐이라 명사 "획득" 은 pos.
+   예: in summary 는 부사구라서 명사 "요약" 은 pos.
+   예: atom 은 명사뿐이라 "원자이다" 는 pos.
+
+"pos" 는 학생이 스스로 정답이라고 뒤집을 수 없게 바로 오답 처리된다.
+품사 문제에 close 를 쓰면 안 된다. correct 아니면 pos 로만 답해라.
+reason 에는 왜 그렇게 판정했는지 한 문장으로 적어라.
+correct 로 인정할 때는 "동사로도 쓰여요" 처럼 근거를, pos 일 때는 어떤 형태로
+써야 하는지 적어라.
 
 reason 은 학생에게 그대로 보여 줄 한국어 한 문장으로, 35자 이내. 존댓말.`;
 }
@@ -175,7 +185,7 @@ Deno.serve(async (req) => {
   // 배포 직후 키가 살아 있는지 확인하는 자체 점검
   //   curl -H "Authorization: Bearer <anon key>" ".../judge-meaning?selftest=1"
   if (req.method === "GET" && new URL(req.url).searchParams.has("selftest")) {
-    const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에", ""));
+    const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에", "", false));
     if ("ok" in r) {
       return json({
         ok: true,
@@ -191,7 +201,7 @@ Deno.serve(async (req) => {
 
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
 
-  let payload: Record<string, string>;
+  let payload: Record<string, unknown>;
   try {
     payload = await req.json();
   } catch {
@@ -205,12 +215,13 @@ Deno.serve(async (req) => {
   const alt = str(payload.alt, 300);
   const exclude = str(payload.exclude, 200);
   const answer = str(payload.answer, 80);
+  const formMismatch = payload.form_mismatch === true || payload.form_mismatch === "true";
 
   // 단어 채점 이외의 용도로 쓰이지 않도록 최소한의 형태 검사
   if (!word || !meaning || !answer) return json({ error: "word, meaning, answer 필요" }, 400);
   if (!/[가-힣]/.test(answer)) return json({ verdict: "wrong", reason: "한국어 뜻이 아닙니다." });
 
-  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude));
+  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch));
   if ("ok" in r) return json(r.ok);
   return json({ error: "판정 실패", detail: r.err }, 502);
 });

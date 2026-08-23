@@ -281,7 +281,7 @@
     </div>
     <div class="mode-row">
       <button class="mode-btn" data-mode="flash"><span class="ic">🃏</span><span><span class="m-title">플래시카드</span><br><span class="m-sub">카드를 넘기며 뜻 확인 · 즐겨찾기</span></span></button>
-      <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">4지선다로 뜻 맞히기</span></span></button>
+      <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">6개 보기에서 뜻 고르기</span></span></button>
       <button class="mode-btn" data-mode="typequiz"><span class="ic">⌨️</span><span><span class="m-title">주관식 퀴즈</span><br><span class="m-sub">뜻을 직접 입력 · 비슷한 뜻도 정답 인정</span></span></button>
       <button class="mode-btn" data-mode="list"><span class="ic">📖</span><span><span class="m-title">단어장</span><br><span class="m-sub">전체 목록 보기 · 즐겨찾기 표시</span></span></button>
       <button class="mode-btn" data-mode="fav"><span class="ic">⭐</span><span><span class="m-title">즐겨찾기</span><br><span class="m-sub">별표한 단어만 모아보기</span></span></button>
@@ -1965,11 +1965,16 @@ function gradeAnswer(answer, item, others){
   /* 품사 검사 — 뜻이 통하는데 품사만 다른 경우에만 "품사 오답" 으로 알려 준다.
      뜻이 아예 다른 답(유사도가 낮은 답)은 그냥 오답이지 품사 문제가 아니다.
      선생님이 적어 둔 뜻과 글자가 똑같으면(=score 1) 검사하지 않는다. */
-  if(mine.score>=GRAY && mine.score<1 && !posOk(answer,item))
-    return {verdict:"pos", score:mine.score, matched:mine.matched, need:item.p};
-
+  // 이미 인정된 답(선생님 승인 · AI 확인 · 학생 자가 인정)이면 다시 묻지 않는다
   if(isAlias(item,ansN))
     return {verdict:"correct", score:1, via:"alias", matched:item.m};
+
+  if(mine.score>=GRAY && mine.score<1 && !posOk(answer,item))
+    // posOnly: 뜻은 통하는데 품사만 다르다는 뜻.
+    // 그 영어 단어가 사전에서 그 품사로도 쓰이는지 AI 에게 물어본다
+    // (demand 는 교재에 "요구"(명사)만 있어도 "요구하다"(동사) 가 사전에 있다).
+    // AI 를 쓸 수 없으면 지금처럼 오답으로 둔다.
+    return {verdict:"pos", posOnly:true, score:mine.score, matched:mine.matched, need:item.p};
   let bestOther=0, otherItem=null;
   (others||[]).forEach(o=>{
     if(o.w===item.w || o.m===item.m) return;
@@ -1991,7 +1996,7 @@ function gradeAnswer(answer, item, others){
 /* ---------- QUIZ ---------- */
 function startQuiz(pool, mode){
   mode = mode || "choice";
-  if(mode==="choice" && pool.length<4){alert("객관식 퀴즈는 단어가 4개 이상일 때 풀 수 있어요.");return;}
+  if(mode==="choice" && pool.length<CHOICE_COUNT){alert(`객관식 퀴즈는 단어가 ${CHOICE_COUNT}개 이상일 때 풀 수 있어요.`);return;}
   if(pool.length<1){alert("이 범위에 단어가 없어요.");return;}
   state.pool=pool.slice();
   state.quiz={mode, order:shuffle(pool.slice()), i:0, score:0, wrong:[], answered:false};
@@ -2015,10 +2020,12 @@ function renderQuiz(){
   if(typing) renderTypeQuestion();
   else renderChoiceQuestion(it);
 }
+const CHOICE_COUNT = 6;          // 객관식 보기 개수
+
 function renderChoiceQuestion(it){
-  // build 4 options from the full group pool
+  // 같은 학습 범위 전체에서 오답 보기를 뽑는다
   const allMeanings = itemsForScope(state.group,"ALL");
-  const distractors = shuffle(allMeanings.filter(x=>x.m!==it.m)).slice(0,3);
+  const distractors = shuffle(allMeanings.filter(x=>x.m!==it.m)).slice(0,CHOICE_COUNT-1);
   const opts=shuffle([it, ...distractors]);
   const box=$("quizOpts"); box.innerHTML="";
   opts.forEach(o=>{
@@ -2081,7 +2088,7 @@ function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 const aiCache=new Map();          // 같은 답을 두 번 묻지 않는다
 let aiFailStreak=0;               // 연달아 실패하면 이번 접속에서는 더 부르지 않는다
 const AI_MAX_FAILS=2;             // (배포가 안 됐거나 서버가 죽었을 때 매 문제마다 기다리지 않도록)
-async function judgeWithAI(item,answer){
+async function judgeWithAI(item,answer,formMismatch){
   if(!AI_JUDGE_URL || aiFailStreak>=AI_MAX_FAILS) return null;
   const key=item.w+"|"+normKo(answer);
   if(aiCache.has(key)) return aiCache.get(key);
@@ -2098,7 +2105,7 @@ async function judgeWithAI(item,answer){
       body:JSON.stringify({
         word:parseWord(item.w).base, pos:item.p||"", meaning:item.m,
         alt:item.alt||"", exclude:parseWord(item.w).no.join(", "),
-        answer:String(answer).trim()
+        answer:String(answer).trim(), form_mismatch:!!formMismatch
       }),
       signal:ctl.signal
     });
@@ -2134,14 +2141,19 @@ async function submitAnswer(){
   const qi=q.i;
 
   // 사전에 없는 표현일 수 있으므로 애매하거나 틀린 답만 AI에게 한 번 더 물어본다
-  if(AI_JUDGE_URL && (res.verdict==="close" || res.verdict==="wrong")){
+  if(AI_JUDGE_URL && (res.verdict==="close" || res.verdict==="wrong" || res.posOnly)){
     feedback("maybe","🤖 뜻을 확인하는 중…",
-      `내 답: <b>${esc(raw.trim())}</b><br><span style="color:var(--ink-soft);font-size:13.5px">사전에 없는 표현인지 확인하고 있어요.</span>`);
-    const ai=await judgeWithAI(it,raw);
+      `내 답: <b>${esc(raw.trim())}</b><br><span style="color:var(--ink-soft);font-size:13.5px">${
+        res.posOnly ? "사전에 그 품사의 뜻이 있는지" : "사전에 없는 표현인지"} 확인하고 있어요.</span>`);
+    const ai=await judgeWithAI(it,raw,res.posOnly);
     if(state.quiz!==q || q.i!==qi) return;        // 그 사이 다른 퀴즈로 옮겨갔으면 중단
     if(ai){
       // AI 가 품사/형태 문제라고 하면 학생 판단 없이 바로 오답
-      if(ai.verdict==="pos"){ res.verdict="pos"; res.aiReason=ai.reason||""; res.byAI=true; renderVerdict(res,it,raw); return; }
+      // 품사 때문에 물어본 건인데 AI 도 애매하다고 하면 오답으로 굳힌다 (자가 판단 금지)
+      if(ai.verdict==="pos" || (res.posOnly && ai.verdict==="close")){
+        res.verdict="pos"; res.aiReason=ai.reason||""; res.byAI=true;
+        renderVerdict(res,it,raw); return;
+      }
       res.verdict=ai.verdict;
       res.aiReason=ai.reason||"";
       res.byAI=true;
@@ -2161,7 +2173,7 @@ function renderVerdict(res,it,raw){
   if(res.verdict==="correct"){
     const exact = !res.byAI && res.via!=="alias" && res.score>=1;   // 뜻 그대로 쓴 경우
     if(res.byAI) saveAiAlias(it,raw);                              // 다음부터는 물어보지 않는다
-    feedback("ok", res.byAI ? "⭕ 정답이에요! (뜻 확인 완료)" : "⭕ 정답이에요!",
+    feedback("ok", res.byAI ? (res.posOnly ? "⭕ 정답이에요! (사전에 있는 다른 품사)" : "⭕ 정답이에요! (뜻 확인 완료)") : "⭕ 정답이에요!",
       exact ? model
             : `<b>‘${esc(raw.trim())}’</b>도 같은 뜻으로 인정했어요.<br>${model}${aiLine}`,
       bar);
@@ -2277,7 +2289,7 @@ $("resRetry").onclick=()=>startQuiz(state._lastQuizPool, state._lastQuizMode);
 $("resWrong").onclick=()=>{
   if(state._lastWrong&&state._lastWrong.length){
     const pool=dedupe(state._lastWrong);
-    startQuiz(pool, (state._lastQuizMode==="choice"&&pool.length<4) ? "type" : state._lastQuizMode);
+    startQuiz(pool, (state._lastQuizMode==="choice"&&pool.length<CHOICE_COUNT) ? "type" : state._lastQuizMode);
   }
 };
 $("resHome").onclick=()=>show("mode");
@@ -2288,7 +2300,7 @@ function startWrongQuiz(){
   const byKey={}; all.forEach(it=>byKey[favKey(it.group,it.day,it.w)]=it);
   const items=[...wrongStore].map(k=>byKey[k]).filter(Boolean);
   if(items.length===0){alert("저장된 틀린 단어가 없어요. 먼저 퀴즈를 풀어보세요!");return;}
-  startQuiz(items, items.length>=4 ? "choice" : "type");
+  startQuiz(items, items.length>=CHOICE_COUNT ? "choice" : "type");
 }
 
 /* ---------- LIST / FAVORITES ---------- */
