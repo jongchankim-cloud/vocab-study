@@ -2085,8 +2085,10 @@ function gradeAnswer(answer, item, others){
   /* 품사 검사 — 뜻이 통하는데 품사만 다른 경우에만 "품사 오답" 으로 알려 준다.
      뜻이 아예 다른 답(유사도가 낮은 답)은 그냥 오답이지 품사 문제가 아니다.
      선생님이 적어 둔 뜻과 글자가 똑같으면(=score 1) 검사하지 않는다. */
-  // 이미 인정된 답(선생님 승인 · AI 확인 · 학생 자가 인정)이면 다시 묻지 않는다
-  if(isAlias(item,ansN))
+  // 이미 인정된 답(선생님 승인 · AI 확인 · 학생 자가 인정)이면 다시 묻지 않는다.
+  // 단, 품사를 지정한 단어("(v)" 표기·p 필드)는 저장된 답도 품사가 맞아야 한다
+  // (규칙을 바꾸기 전에 잘못 인정된 답이 남아 있을 수 있다).
+  if(isAlias(item,ansN) && !(posLocked(item) && !posOk(answer,item)))
     return {verdict:"correct", score:1, via:"alias", matched:item.m};
 
   // 뜻은 맞는데 조사를 붙인 경우 — 사전에 물어볼 것도 없이 형태 오답
