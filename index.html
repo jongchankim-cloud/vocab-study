@@ -303,8 +303,8 @@
     </div>
     <div class="mode-row">
       <button class="mode-btn" data-mode="flash"><span class="ic">🃏</span><span><span class="m-title">플래시카드</span><br><span class="m-sub">카드를 넘기며 뜻 확인 · 즐겨찾기</span></span></button>
-      <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">6개 보기에서 뜻 고르기</span></span></button>
-      <button class="mode-btn" data-mode="typequiz"><span class="ic">⌨️</span><span><span class="m-title">주관식 퀴즈</span><br><span class="m-sub">뜻을 직접 입력 · 비슷한 뜻도 정답 인정</span></span></button>
+      <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">6개 보기에서 뜻 고르기 · 20문제</span></span></button>
+      <button class="mode-btn" data-mode="typequiz"><span class="ic">⌨️</span><span><span class="m-title">주관식 퀴즈</span><br><span class="m-sub">뜻을 직접 입력 · 20문제</span></span></button>
       <button class="mode-btn" data-mode="list"><span class="ic">📖</span><span><span class="m-title">단어장</span><br><span class="m-sub">전체 목록 보기 · 즐겨찾기 표시</span></span></button>
       <button class="mode-btn" data-mode="fav"><span class="ic">⭐</span><span><span class="m-title">즐겨찾기</span><br><span class="m-sub">별표한 단어만 모아보기</span></span></button>
       <button class="mode-btn" data-mode="wrongquiz" id="wrongBtn"><span class="ic">🔁</span><span><span class="m-title">틀린 단어 다시 풀기</span><br><span class="m-sub">퀴즈에서 틀린 단어만 모아 퀴즈</span></span></button>
@@ -2049,12 +2049,15 @@ function gradeAnswer(answer, item, others){
 }
 
 /* ---------- QUIZ ---------- */
+const QUIZ_LEN = 20;             // 한 번에 푸는 문제 수 (범위가 아무리 넓어도 이만큼만)
+
 function startQuiz(pool, mode){
   mode = mode || "choice";
   if(mode==="choice" && pool.length<CHOICE_COUNT){alert(`객관식 퀴즈는 단어가 ${CHOICE_COUNT}개 이상일 때 풀 수 있어요.`);return;}
   if(pool.length<1){alert("이 범위에 단어가 없어요.");return;}
-  state.pool=pool.slice();
-  state.quiz={mode, order:shuffle(pool.slice()), i:0, score:0, wrong:[], answered:false};
+  state.pool=pool.slice();                     // 범위 전체 — 다시 풀기와 보기 뽑기에 쓴다
+  const order=shuffle(pool.slice()).slice(0,QUIZ_LEN);   // 그중 20개만 무작위로
+  state.quiz={mode, order, i:0, score:0, wrong:[], answered:false};
   renderQuiz(); show("quiz");
 }
 function renderQuiz(){
@@ -2078,9 +2081,12 @@ function renderQuiz(){
 const CHOICE_COUNT = 6;          // 객관식 보기 개수
 
 function renderChoiceQuestion(it){
-  // 같은 학습 범위 전체에서 오답 보기를 뽑는다
-  const allMeanings = itemsForScope(state.group,"ALL");
-  const distractors = shuffle(allMeanings.filter(x=>x.m!==it.m)).slice(0,CHOICE_COUNT-1);
+  /* 오답 보기는 "지금 고른 범위" 안에서 뽑는다.
+     범위 전체에서 뽑으면 고르지 않은 챕터의 뜻이 섞여 문제가 쉬워진다.
+     범위가 보기 수보다 작을 때만 그룹 전체에서 채운다. */
+  let src = state.pool && state.pool.length>=CHOICE_COUNT
+    ? state.pool : itemsForScope(state.group,"ALL");
+  const distractors = shuffle(src.filter(x=>x.m!==it.m)).slice(0,CHOICE_COUNT-1);
   const opts=shuffle([it, ...distractors]);
   const box=$("quizOpts"); box.innerHTML="";
   opts.forEach(o=>{
