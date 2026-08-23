@@ -332,7 +332,9 @@
             <button id="ansSubmit">확인</button>
           </div>
           <div id="ansFeed" class="ans-feed hidden"></div>
-          <p class="ans-tip">뜻이 여러 개면 하나만 써도 되고, <b>비슷한 뜻</b>으로 써도 정답으로 인정돼요.<br>모르겠으면 그냥 비워 두고 <b>확인</b>을 누르세요.</p>
+          <p class="ans-tip">뜻이 여러 개면 하나만 써도 되고, <b>비슷한 뜻</b>으로 써도 정답으로 인정돼요.<br>
+            다만 <b>품사는 정확해야</b> 합니다 — 동사는 ‘~하다’, 형용사는 ‘~한’으로 쓰세요.<br>
+            모르겠으면 그냥 비워 두고 <b>확인</b>을 누르세요.</p>
         </div>
         <div class="quiz-foot">
           <span class="score" id="quizScore"></span>
@@ -713,6 +715,70 @@ function stemKo(s){
 function shareSet(A,B){
   for(const x of A) if(B.has(x)) return true;
   return false;
+}
+
+/* ---- 문제에 적힌 제외 뜻 ----
+   "Address(주소x)" 처럼 괄호 안에 'x' 를 붙여 두면 그 뜻은 정답으로 인정하지 않는다.
+   여러 개면 쉼표로: "Address(주소x, 연설x)"                                  */
+const _wordCache=new Map();
+function parseWord(w){
+  const raw=String(w||"").trim();
+  if(_wordCache.has(raw)) return _wordCache.get(raw);
+  let out={base:raw, no:[]};
+  const m=raw.match(/^(.*?)\s*[（(]([^)）]*)[)）]\s*$/);
+  if(m){
+    const no=[];
+    m[2].split(/[,，·/]/).map(x=>x.trim()).filter(Boolean).forEach(part=>{
+      const hit=part.match(/^(.*?)\s*[xX✗×]$/);
+      if(hit && hit[1].trim()) no.push(hit[1].trim());
+    });
+    if(no.length) out={base:(m[1].trim()||raw), no};
+  }
+  _wordCache.set(raw,out);
+  return out;
+}
+
+/* ---- 품사 판별 ----
+   뜻이 맞아도 품사가 다르면 오답이다.
+     acquire(동) 에 "획득"(명사) → 오답,  "획득하다" → 정답
+     abstract(형) 에 "추상"(명사) → 오답,  "추상적인" → 정답
+   확실한 표지만 보고, 애매하면 양쪽 다 가능한 것으로 두어 억울한 오답을 만들지 않는다. */
+
+// 이것으로 끝나면 확실히 용언(동사·형용사)
+const VERB_ONLY_END=["하다","되다","이다","시키다","당하다","스럽다","스러운","스럽게","롭다","로운","답다","다운",
+                     "적인","적으로","하는","되는","했다","됐다","되었다","하기","되기","하여","해서","한다",
+                     "한","인","운","함","됨"];
+// 조사일 수도, 어미일 수도 있어 양쪽 다 가능한 것 ("짐은"=명사+조사, "넓은"=형용사)
+const AMBIG_END=["은","는","이","가","을","를","의","에","음","기"];
+
+function posSet(raw){
+  const t=normKo(raw);
+  const out=new Set();
+  if(!t) return out;
+  if(/다$/.test(t)){ out.add("용언"); return out; }        // ~다 로 끝나면 용언
+  for(const e of VERB_ONLY_END){
+    if(t.length>e.length && t.endsWith(e)){ out.add("용언"); return out; }
+  }
+  for(const e of AMBIG_END){
+    if(t.length>e.length && t.endsWith(e)){ out.add("용언"); out.add("체언"); return out; }
+  }
+  out.add("체언");
+  return out;
+}
+
+// 단어의 품사(p)가 요구하는 형태. 부사 등은 형태가 다양해 검사하지 않는다.
+const POS_NEED={ "명":"체언", "동":"용언", "형":"용언" };
+function posLabel(p){ return {"명":"명사","동":"동사","형":"형용사"}[p]||p; }
+function posHint(p){
+  return p==="동" ? "‘~하다’처럼 <b>동사</b>로 써 주세요."
+       : p==="형" ? "‘~한/~인’처럼 <b>형용사</b>로 써 주세요."
+       : p==="명" ? "‘~하다’를 빼고 <b>명사</b>로 써 주세요." : "";
+}
+/* 품사가 맞는가. 선생님이 적어 둔 뜻·추가 정답과 글자가 똑같으면 검사하지 않는다. */
+function posOk(answer,item){
+  const need=POS_NEED[item.p];
+  if(!need) return true;
+  return posSet(answer).has(need);
 }
 
 /* ---- 동의어 사전 (자주 나오는 뜻 묶음) ---- */
@@ -1220,11 +1286,25 @@ function gradeAnswer(answer, item, others){
   if(!ansN) return {verdict:"empty", score:0, matched:item.m};
   if(/[가-힣]/.test(item.m) && !/[가-힣]/.test(String(answer)))
     return {verdict:"english", score:0, matched:item.m};
-  if(isAlias(item,ansN))
-    return {verdict:"correct", score:1, via:"alias", matched:item.m};
 
   const A=prep(answer);
+
+  /* 문제에 "(주소x)" 처럼 빼라고 적힌 뜻이면 오답 */
+  const banned=parseWord(item.w).no;
+  for(const b of banned){
+    if(scoreAgainst(answer,b,A).score>=ACCEPT)
+      return {verdict:"excluded", score:0, banned:b, matched:item.m};
+  }
+
   const mine=scoreItem(item,A,answer);
+
+  /* 품사 검사 — 뜻이 맞아도 품사가 다르면 오답.
+     선생님이 적어 둔 뜻과 글자가 똑같으면(=score 1) 건너뛴다. */
+  if(mine.score<1 && !posOk(answer,item))
+    return {verdict:"pos", score:mine.score, matched:mine.matched, need:item.p};
+
+  if(isAlias(item,ansN))
+    return {verdict:"correct", score:1, via:"alias", matched:item.m};
   let bestOther=0, otherItem=null;
   (others||[]).forEach(o=>{
     if(o.w===item.w || o.m===item.m) return;
@@ -1256,8 +1336,8 @@ function renderQuiz(){
   const q=state.quiz; const it=q.order[q.i];
   const typing = q.mode==="type";
   $("quizWord").textContent=it.w;
-  $("quizPrompt").textContent = typing
-    ? "이 단어의 뜻을 직접 입력하세요"
+  $("quizPrompt").innerHTML = typing
+    ? `이 단어의 뜻을 직접 입력하세요${it.p?` · <b>${esc(posLabel(it.p))}</b>`:""}`
     : "알맞은 뜻을 고르세요";
   $("quizCounter").textContent=`${q.i+1} / ${q.order.length}`;
   $("quizBar").style.width=((q.i)/q.order.length)*100+"%";
@@ -1350,8 +1430,9 @@ async function judgeWithAI(item,answer){
         "apikey":SUPABASE_ANON
       },
       body:JSON.stringify({
-        word:item.w, pos:item.p||"", meaning:item.m,
-        alt:item.alt||"", answer:String(answer).trim()
+        word:parseWord(item.w).base, pos:item.p||"", meaning:item.m,
+        alt:item.alt||"", exclude:parseWord(item.w).no.join(", "),
+        answer:String(answer).trim()
       }),
       signal:ctl.signal
     });
@@ -1417,6 +1498,24 @@ function renderVerdict(res,it,raw){
             : `<b>‘${esc(raw.trim())}’</b>도 같은 뜻으로 인정했어요.<br>${model}${aiLine}`,
       bar);
     markCorrect();
+    return;
+  }
+
+  // 문제에서 빼라고 한 뜻 — AI 에게 묻지 않는다.
+  if(res.verdict==="excluded"){
+    feedback("no","❌ 그 뜻은 빼고 답해 주세요",
+      `문제에 <b>${esc(res.banned)}</b>는 쓰지 말라고 되어 있어요.<br>
+       내 답: <b>${esc(raw.trim())}</b><br>${model}`);
+    markWrong(it);
+    return;
+  }
+
+  // 품사가 다르면 뜻이 통해도 오답. AI 에게 묻지 않고 여기서 끝낸다.
+  if(res.verdict==="pos"){
+    feedback("no","❌ 품사가 달라요",
+      `<b>${esc(it.w)}</b> 는 <b>${esc(posLabel(res.need))}</b>예요. ${posHint(res.need)}<br>
+       내 답: <b>${esc(raw.trim())}</b><br>${model}`);
+    markWrong(it);
     return;
   }
 

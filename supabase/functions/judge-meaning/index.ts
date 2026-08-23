@@ -37,21 +37,31 @@ const json = (body: unknown, status = 200) =>
   });
 
 /** 학생 답안이 표준 답안과 같은 뜻인지 묻는 프롬프트 */
-function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string) {
-  return `너는 영어 단어 시험의 채점 보조다. 학생이 쓴 우리말 뜻이 표준 답안과 같은 뜻인지 판단해라.
+function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string) {
+  return `너는 영어 단어 시험의 채점 보조다. 학생이 쓴 우리말 뜻이 그 단어의 뜻으로 맞는지 판단해라.
 
 영어 단어: ${w}${pos ? ` (${pos})` : ""}
-표준 답안: ${meaning}${alt ? `\n추가로 인정된 답안: ${alt}` : ""}
+교재의 뜻: ${meaning}${alt ? `\n추가로 인정된 답안: ${alt}` : ""}${exclude ? `\n인정하지 않는 뜻: ${exclude}` : ""}
 학생 답안: ${answer}
 
 판정 기준
-- correct : 표준 답안 중 하나와 뜻이 실질적으로 같다.
+- correct : 교재의 뜻과 실질적으로 같거나, **사전에 실려 있는 그 단어의 다른 뜻**이다.
+            교재에 안 적혀 있어도 사전에 있는 뜻이면 지엽적인 뜻이라도 인정한다.
+            (예: address 에 "연설하다", "말을 걸다" — 교재에 "다루다" 만 있어도 정답)
             사전이 달라 표현만 다른 경우(예: "나중에" / "추후에"),
-            같은 뜻의 다른 낱말, 어미·조사만 다른 경우, 더 풀어 쓴 설명을 모두 포함한다.
+            같은 뜻의 다른 낱말, 어미·조사만 다른 경우, 더 풀어 쓴 설명도 모두 포함한다.
 - close   : 뜻이 겹치기는 하지만 범위가 지나치게 넓거나 좁아 애매하다.
-            또는 그 단어의 다른 뜻(다의어)일 수는 있으나 표준 답안과는 다르다.
-- wrong   : 뜻이 다르다. 특히 혼동하기 쉬운 다른 영어 단어의 뜻을 적은 경우
+- wrong   : 그 단어의 뜻이 아니다. 특히 혼동하기 쉬운 다른 영어 단어의 뜻을 적은 경우
             (예: subsequently 에 "따라서")는 반드시 wrong 이다.
+
+"인정하지 않는 뜻" 에 적힌 것과 같은 뜻이면, 사전에 있는 뜻이어도 반드시 wrong 이다.
+문제에서 그 뜻은 빼고 답하라고 지정한 것이다.
+
+품사는 예외 없이 엄격하게 본다. 뜻이 통해도 품사가 다르면 반드시 wrong 이다.
+  동사(동)  → "얻다", "획득하다" 처럼 '~다' 로 끝나야 한다. "획득", "습득" 은 명사이므로 wrong.
+  형용사(형) → "정확한", "추상적인" 처럼 '~한/~인' 이거나 '~하다' 여야 한다. "추상" 은 wrong.
+  명사(명)  → "능력", "부담" 처럼 명사여야 한다. "부담스럽다", "능력있다" 는 wrong.
+이 경우 reason 에 품사가 다르다는 점을 적어라.
 
 reason 은 학생에게 그대로 보여 줄 한국어 한 문장으로, 35자 이내. 존댓말.`;
 }
@@ -161,7 +171,7 @@ Deno.serve(async (req) => {
   // 배포 직후 키가 살아 있는지 확인하는 자체 점검
   //   curl -H "Authorization: Bearer <anon key>" ".../judge-meaning?selftest=1"
   if (req.method === "GET" && new URL(req.url).searchParams.has("selftest")) {
-    const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에"));
+    const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에", ""));
     if ("ok" in r) {
       return json({
         ok: true,
@@ -189,13 +199,14 @@ Deno.serve(async (req) => {
   const pos = str(payload.pos, 10);
   const meaning = str(payload.meaning, 300);
   const alt = str(payload.alt, 300);
+  const exclude = str(payload.exclude, 200);
   const answer = str(payload.answer, 80);
 
   // 단어 채점 이외의 용도로 쓰이지 않도록 최소한의 형태 검사
   if (!word || !meaning || !answer) return json({ error: "word, meaning, answer 필요" }, 400);
   if (!/[가-힣]/.test(answer)) return json({ verdict: "wrong", reason: "한국어 뜻이 아닙니다." });
 
-  const r = await judge(buildPrompt(word, pos, meaning, alt, answer));
+  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude));
   if ("ok" in r) return json(r.ok);
   return json({ error: "판정 실패", detail: r.err }, 502);
 });
