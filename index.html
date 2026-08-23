@@ -139,6 +139,43 @@
   .quiz-foot .score{font-size:14px;color:var(--ink-soft)}
   .quiz-foot button{margin-left:auto;background:var(--accent);color:#fff;border-radius:12px;padding:12px 22px;font-weight:700}
 
+  /* ---------- 주관식(서술형) 답안 ---------- */
+  .ans-row{display:flex;gap:10px;margin-bottom:12px}
+  .ans-row input{
+    flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:15px 16px;
+    font-size:18px;font-family:inherit;background:var(--card);transition:.15s
+  }
+  .ans-row input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .ans-row input:disabled{background:var(--paper);color:var(--ink-soft)}
+  .ans-row button{background:var(--accent);color:#fff;border-radius:12px;padding:0 24px;font-weight:800;font-size:16px;flex:none}
+  .ans-row button:hover{background:#27604f}
+  .ans-row button:disabled{opacity:.45;cursor:default}
+  .ans-tip{font-size:12px;color:var(--ink-soft);margin-bottom:4px;line-height:1.6}
+
+  .ans-feed{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:15px 17px;margin-bottom:12px;font-size:15px}
+  .ans-feed .fb-t{display:block;font-size:17px;font-weight:800;margin-bottom:5px}
+  .ans-feed .fb-line{color:var(--ink);line-height:1.65}
+  .ans-feed .fb-line b{font-weight:800}
+  .ans-feed.ok{border-color:var(--accent);background:var(--accent-soft)}
+  .ans-feed.ok .fb-t{color:var(--accent)}
+  .ans-feed.no{border-color:var(--wrong);background:var(--wrong-soft)}
+  .ans-feed.no .fb-t{color:var(--wrong)}
+  .ans-feed.maybe{border-color:var(--gold);background:#fbf4e4}
+  .ans-feed.maybe .fb-t{color:#8a6417}
+  .fb-btns{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+  .fb-btns button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 15px;font-weight:700;font-size:13.5px;transition:.12s}
+  .fb-btns button:hover{border-color:var(--accent);color:var(--accent)}
+  .fb-btns button.solid{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .fb-btns button.solid:hover{background:#27604f;color:#fff}
+  .fb-btns button.ghost{background:transparent;border-style:dashed;color:var(--ink-soft);font-weight:600}
+  .fb-btns button:disabled{opacity:.5;cursor:default}
+  .sim{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:11.5px;color:var(--ink-soft)}
+  .sim .track{flex:1;height:6px;border-radius:99px;background:rgba(28,39,51,.1);overflow:hidden}
+  .sim .track i{display:block;height:100%;border-radius:99px;background:currentColor;transition:width .4s}
+  .ans-feed.ok .sim{color:var(--accent)}
+  .ans-feed.no .sim{color:var(--wrong)}
+  .ans-feed.maybe .sim{color:var(--gold)}
+
   /* ---------- Result ---------- */
   .result{text-align:center;padding:18px 0}
   .result .big{font-size:52px;font-weight:800;color:var(--accent)}
@@ -245,6 +282,7 @@
     <div class="mode-row">
       <button class="mode-btn" data-mode="flash"><span class="ic">🃏</span><span><span class="m-title">플래시카드</span><br><span class="m-sub">카드를 넘기며 뜻 확인 · 즐겨찾기</span></span></button>
       <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">4지선다로 뜻 맞히기</span></span></button>
+      <button class="mode-btn" data-mode="typequiz"><span class="ic">⌨️</span><span><span class="m-title">주관식 퀴즈</span><br><span class="m-sub">뜻을 직접 입력 · 비슷한 뜻도 정답 인정</span></span></button>
       <button class="mode-btn" data-mode="list"><span class="ic">📖</span><span><span class="m-title">단어장</span><br><span class="m-sub">전체 목록 보기 · 즐겨찾기 표시</span></span></button>
       <button class="mode-btn" data-mode="fav"><span class="ic">⭐</span><span><span class="m-title">즐겨찾기</span><br><span class="m-sub">별표한 단어만 모아보기</span></span></button>
       <button class="mode-btn" data-mode="wrongquiz" id="wrongBtn"><span class="ic">🔁</span><span><span class="m-title">틀린 단어 다시 풀기</span><br><span class="m-sub">퀴즈에서 틀린 단어만 모아 퀴즈</span></span></button>
@@ -288,6 +326,14 @@
         <div class="quiz-q" id="quizWord"></div>
         <div class="quiz-prompt" id="quizPrompt">알맞은 뜻을 고르세요</div>
         <div id="quizOpts"></div>
+        <div id="quizType" class="hidden">
+          <div class="ans-row">
+            <input id="ansInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="뜻을 한국어로 입력하세요">
+            <button id="ansSubmit">확인</button>
+          </div>
+          <div id="ansFeed" class="ans-feed hidden"></div>
+          <p class="ans-tip">뜻이 여러 개면 하나만 써도 되고, <b>비슷한 뜻</b>으로 써도 정답으로 인정돼요.<br>모르겠으면 그냥 비워 두고 <b>확인</b>을 누르세요.</p>
+        </div>
         <div class="quiz-foot">
           <span class="score" id="quizScore"></span>
           <button id="quizNext" class="hidden">다음 →</button>
@@ -387,8 +433,14 @@ const VOCAB_DATA = {
 const favorites = new Set();
 // wrongStore: persistent wrong words across sessions, Set of word_id
 const wrongStore = new Set();
+// 주관식에서 "정답으로 인정된 답" — "그룹|DAY|단어|정규화답"
+const aliasOwn    = new Set();   // 이 학생이 스스로 인정한 답
+const aliasGlobal = new Set();   // 선생님이 모든 학생에게 인정해 준 답
+const aliasAsked  = new Set();   // 이번 접속에서 인정 요청을 보낸 답
 
 const student = { key:null, name:null };
+// 선생님이 승인해 모든 학생에게 적용되는 인정 답안이 저장되는 가상 계정
+const ALIAS_OWNER = "__ALIAS__";
 
 const state = {
   group:null, scopeDays:null, scopeLabel:"",
@@ -493,7 +545,8 @@ document.querySelectorAll(".mode-btn").forEach(btn=>{
   btn.addEventListener("click",()=>{
     const mode=btn.dataset.mode;
     if(mode==="flash") startFlash();
-    else if(mode==="quiz") startQuiz(itemsForScope(state.group,state.scopeDays));
+    else if(mode==="quiz") startQuiz(itemsForScope(state.group,state.scopeDays),"choice");
+    else if(mode==="typequiz") startQuiz(itemsForScope(state.group,state.scopeDays),"type");
     else if(mode==="list") openList("list");
     else if(mode==="fav") openList("fav");
     else if(mode==="wrongquiz") startWrongQuiz();
@@ -542,21 +595,434 @@ $("flashNext").onclick=()=>{state.idx=(state.idx+1)%state.pool.length;renderFlas
 $("flashPrev").onclick=()=>{if(state.idx>0){state.idx--;renderFlash();}};
 $("flashShuffle").onclick=()=>{shuffle(state.pool);state.idx=0;renderFlash();};
 
+/* =====================================================================
+   주관식 채점기 — 한국어 뜻 유사도 판정 (외부 API 불필요, 100% 브라우저)
+   1) 정규화  2) 어간 추출  3) 동의어 사전  4) 자모 편집거리/바이그램
+   ===================================================================== */
+
+/* ---- 한글 자모 분해 ---- */
+const HB=0xAC00;
+const CHO=["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+const JUNG=["ㅏ","ㅐ","ㅑ","ㅒ","ㅓ","ㅔ","ㅕ","ㅖ","ㅗ","ㅘ","ㅙ","ㅚ","ㅛ","ㅜ","ㅝ","ㅞ","ㅟ","ㅠ","ㅡ","ㅢ","ㅣ"];
+const JONG=["","ㄱ","ㄲ","ㄳ","ㄴ","ㄵ","ㄶ","ㄷ","ㄹ","ㄺ","ㄻ","ㄼ","ㄽ","ㄾ","ㄿ","ㅀ","ㅁ","ㅂ","ㅄ","ㅅ","ㅆ","ㅇ","ㅈ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+function toJamo(s){
+  let out="";
+  for(const ch of String(s)){
+    const c=ch.charCodeAt(0)-HB;
+    if(c>=0&&c<11172) out+=CHO[Math.floor(c/588)]+JUNG[Math.floor((c%588)/28)]+JONG[c%28];
+    else out+=ch;
+  }
+  return out;
+}
+
+/* ---- 정규화 ---- */
+// 괄호주석·물결표 조사·기호·공백 제거
+function normKo(s){
+  return String(s||"")
+    .replace(/[（(\[【<{][^）)\]】>}]*[）)\]】>}]/g," ")   // (…) 안 주석 제거
+    .replace(/[~∼〜]\s*[을를이가에게와과로써의는은]*/g," ") // ~을/~를 자리표시 제거
+    .replace(/\b(무엇|누구|어떤것|어떤)\s*[을를이가에게]?/g," ")
+    .replace(/[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9]+/g,"")
+    .toLowerCase();
+}
+// 뜻 문자열을 여러 개의 정답 후보로 분리
+function splitMeaning(m){
+  return String(m||"")
+    .split(/[,;/|·∙、‧]+/)
+    .map(s=>s.trim())
+    .filter(Boolean);
+}
+
+/* ---- 어간 후보 추출 ---- */
+const VERB_END=["하게하다","하게되다","되어지다","해지다","시키다","당하다","스러운","스럽게","스럽다","되었다","적으로","하는","되는","했다","됐다","하기","되기","하여","해서","적인","하다","되다","이다","롭다","로운","답다","다운","한다","한","된","인","함","됨","음","는","적","기","다"];
+const SHORT_END=["다","은","는","한","인","음","기","힘","임"];
+// 활용형 어미 (맞추어→맞추, 지키고→지키). 2글자 이상 남을 때만 자름
+const CONJ_END=["었다","았다","여서","어서","아서","어야","아야","어","아","여","고","며","면","게","지","려","러","자"];
+const PARTICLE=["으로","에게","에서","와","과","을","를","이","가","은","는","의","에","도","만","로"];
+function stripOnce(t,list,minLeft){
+  for(const suf of list){
+    if(t.length>suf.length && t.endsWith(suf) && t.length-suf.length>=minLeft) return t.slice(0,-suf.length);
+  }
+  return t;
+}
+// 명사형 어미(-ㅁ/-ㄴ/-ㄹ 받침) 제거: 버림 -> 버리, 넓음 -> 넓으
+function stripCoda(t){
+  if(t.length<2) return t;
+  const c=t.charCodeAt(t.length-1)-HB;
+  if(c<0||c>=11172) return t;
+  const jong=c%28;
+  if(jong!==16 && jong!==4 && jong!==8) return t; // ㅁ, ㄴ, ㄹ 만
+  return t.slice(0,-1)+String.fromCharCode(HB+(c-jong));
+}
+function stemSet(s){
+  const out=new Set();
+  const n=normKo(s);
+  if(!n) return out;
+  out.add(n);
+  const seeds=[n];
+  const p=stripOnce(n,PARTICLE,2); if(p!==n){out.add(p); seeds.push(p);}
+  seeds.slice().forEach(x=>{
+    const v=stripOnce(x,VERB_END,2); if(v!==x){out.add(v); seeds.push(v);}
+    const v1=stripOnce(x,SHORT_END,1); if(v1!==x){out.add(v1); seeds.push(v1);}
+    const v2=stripOnce(x,CONJ_END,2);  if(v2!==x){out.add(v2); seeds.push(v2);}
+  });
+  seeds.forEach(x=>{
+    const c=stripCoda(x);
+    if(c!==x){
+      out.add(c);
+      const c2=stripOnce(c,VERB_END,2); if(c2!==c) out.add(c2);
+    }
+  });
+  out.delete("");
+  return out;
+}
+function stemKo(s){
+  // 대표 어간 (사전 키 용도)
+  const n=normKo(s);
+  if(n.length<2) return n;
+  let t=stripOnce(n,PARTICLE,2);
+  const v=stripOnce(t,VERB_END,2);
+  if(v!==t) return v;
+  const v1=stripOnce(t,SHORT_END,1);
+  if(v1!==t) return v1;
+  const c=stripCoda(t);
+  return c!==t ? c : t;
+}
+function shareSet(A,B){
+  for(const x of A) if(B.has(x)) return true;
+  return false;
+}
+
+/* ---- 동의어 사전 (자주 나오는 뜻 묶음) ---- */
+const SYN_GROUPS=[
+["버리다","포기하다","단념하다","그만두다","내버리다","저버리다","폐기하다","떠나다"],
+["능력","재능","역량","실력","기량","소질","재주","힘"],
+["흡수하다","빨아들이다","받아들이다","섭취하다","몰두시키다"],
+["추상적","관념적","개념적","막연한"],
+["정확한","정밀한","올바른","틀림없는","꼭맞는"],
+["이루다","성취하다","달성하다","해내다","이룩하다","이뤄내다"],
+["얻다","획득하다","습득하다","취득하다","손에넣다","배우다","익히다"],
+["적응하다","맞추다","조정하다","순응하다","각색하다","개작하다"],
+["이익","혜택","이득","유익","이점","장점","도움"],
+["편견","선입견","편향","치우침","편파"],
+["간단한","짧은","간략한","간결한","잠깐의","잠시의"],
+["넓은","광범위한","폭넓은","너른","방대한"],
+["부담","짐","책임","부담감","무거운짐"],
+["늘리다","증가하다","늘다","증대하다","확대하다","키우다","불리다"],
+["줄이다","감소하다","줄다","축소하다","낮추다","덜다"],
+["중요한","중대한","소중한","주요한","핵심적인","귀중한"],
+["어려운","힘든","곤란한","까다로운","고된"],
+["쉬운","간편한","수월한","용이한"],
+["놀라운","굉장한","대단한","훌륭한","뛰어난","탁월한","우수한"],
+["이상한","특이한","낯선","기이한","괴상한","야릇한"],
+["결정하다","정하다","결심하다","판단하다","작정하다"],
+["설명하다","해명하다","밝히다","풀이하다","서술하다"],
+["주장하다","우기다","강조하다","역설하다","단언하다"],
+["제안하다","제시하다","권하다","건의하다","시사하다","암시하다"],
+["거절하다","거부하다","물리치다","사양하다","반려하다"],
+["허락하다","허용하다","승인하다","인정하다","용인하다"],
+["금지하다","막다","방지하다","못하게하다","저지하다","억제하다"],
+["예상하다","예측하다","기대하다","내다보다","짐작하다","전망하다"],
+["발견하다","찾다","찾아내다","알아내다","밝혀내다","탐지하다"],
+["발명하다","만들어내다","창조하다","창안하다","고안하다"],
+["유지하다","지키다","보존하다","간직하다","보전하다","존속하다"],
+["개선하다","향상시키다","나아지다","좋아지다","발전하다","증진하다"],
+["감소","하락","저하","축소","쇠퇴"],
+["증가","상승","증대","확대","성장"],
+["원인","이유","까닭","근거","동기"],
+["결과","결말","성과","결실","귀결"],
+["영향","효과","작용","여파","영향력"],
+["목적","목표","의도","취지","지향"],
+["방법","방식","수단","방책","길","방안"],
+["문제","어려움","난관","과제","쟁점"],
+["해결하다","풀다","처리하다","극복하다","타개하다"],
+["위험","위기","모험","위태로움","위협"],
+["안전한","무사한","안심되는"],
+["환경","주위","상황","여건","배경","주변"],
+["사회","공동체","집단","단체"],
+["개인","사람","개체","인간"],
+["문화","문명","교양"],
+["전통","관습","풍습","인습","관례"],
+["경제","재정","경기"],
+["정치","정책","통치","행정"],
+["과학","학문","학술"],
+["기술","기법","솜씨","기교","공학"],
+["정보","자료","데이터","소식"],
+["지식","앎","학식","지혜","견문"],
+["경험","체험","겪다","경력"],
+["기억하다","외우다","암기하다","떠올리다","회상하다","되새기다"],
+["잊다","잊어버리다","망각하다"],
+["이해하다","알다","깨닫다","파악하다","알아듣다","인식하다","납득하다"],
+["오해하다","잘못알다","착각하다"],
+["표현하다","나타내다","드러내다","표시하다","표명하다"],
+["감정","느낌","정서","기분","심정"],
+["행복한","즐거운","기쁜","유쾌한","만족한","흐뭇한"],
+["슬픈","우울한","서글픈","비참한","침울한"],
+["화난","분노한","성난","격분한","noe"],
+["두려운","무서운","겁나는","공포","무시무시한"],
+["걱정하다","근심하다","염려하다","불안해하다","우려하다"],
+["놀라다","깜짝놀라다","경악하다","당황하다"],
+["믿다","신뢰하다","확신하다","신용하다","의지하다"],
+["의심하다","의혹","수상히여기다","불신하다"],
+["희망","바람","소망","기대","염원"],
+["노력","수고","애씀","힘씀","분투"],
+["노력하다","애쓰다","힘쓰다","수고하다","분투하다","힘들이다"],
+["성공하다","해내다","이뤄내다","번창하다"],
+["실패하다","좌절하다","실수하다","그르치다"],
+["경쟁하다","겨루다","다투다","경합하다"],
+["협력하다","협동하다","협조하다","함께하다"],
+["돕다","도와주다","지원하다","원조하다","보조하다","거들다"],
+["방해하다","저지하다","지장을주다","훼방놓다","가로막다"],
+["파괴하다","부수다","무너뜨리다","망가뜨리다","파멸시키다","훼손하다"],
+["만들다","제작하다","생산하다","제조하다","창작하다","산출하다"],
+["사용하다","이용하다","쓰다","활용하다","적용하다"],
+["소비하다","낭비하다","소모하다","탕진하다"],
+["절약하다","아끼다","저축하다","모으다","비축하다"],
+["제공하다","주다","공급하다","베풀다","건네다","수여하다"],
+["요구하다","요청하다","청하다","부탁하다","요망하다"],
+["명령하다","지시하다","시키다","분부하다","명하다"],
+["선택하다","고르다","택하다","선정하다","선발하다"],
+["비교하다","견주다","대조하다","대비하다"],
+["구별하다","구분하다","분간하다","식별하다","가리다"],
+["포함하다","담다","아우르다","들어있다","내포하다","포괄하다"],
+["제외하다","빼다","배제하다","제거하다","없애다","덜어내다"],
+["증명하다","입증하다","증거를대다","실증하다"],
+["반대하다","대립하다","맞서다","저항하다","항의하다","거스르다"],
+["찬성하다","동의하다","승낙하다","수긍하다","동조하다"],
+["예의","예절","공손함","매너","예우"],
+["태도","자세","마음가짐","입장"],
+["성격","성질","특성","기질","본성","천성"],
+["특징","특색","특질","특유의","고유한"],
+["가치","값어치","값","소중함","값진"],
+["의미","뜻","의의","취지","함의"],
+["상황","형편","사정","처지","정황","국면"],
+["사건","사고","일","사태","일어난일"],
+["변화","변동","바뀜","변천","전환"],
+["변하다","바뀌다","달라지다","변화하다","변형되다","전환하다"],
+["움직이다","이동하다","옮기다","이사하다","감동시키다"],
+["멈추다","그치다","중단하다","정지하다","끊다"],
+["계속하다","지속하다","이어지다","계속되다","존속하다"],
+["시작하다","개시하다","착수하다","출발하다","비롯되다"],
+["끝내다","마치다","완료하다","종료하다","마무리하다"],
+["나타나다","등장하다","출현하다","드러나다","보이다"],
+["사라지다","없어지다","소멸하다","자취를감추다","실종되다"],
+["늘어나다","커지다","성장하다","자라다","발달하다","번성하다"],
+["참다","견디다","인내하다","버티다","감내하다","지탱하다"],
+["무시하다","소홀히하다","얕보다","경시하다","등한시하다","묵살하다"],
+["존경하다","우러러보다","공경하다","존중하다","숭배하다"],
+["칭찬하다","찬양하다","기리다","격려하다","치켜세우다"],
+["비난하다","비판하다","탓하다","나무라다","책망하다","혹평하다"],
+["속이다","기만하다","사기치다","현혹하다","눈속임하다"],
+["정직한","솔직한","진실한","성실한","꾸밈없는"],
+["게으른","나태한","태만한","느긋한"],
+["부지런한","근면한","성실한","열심인"],
+["가난한","빈곤한","궁핍한","곤궁한","불쌍한"],
+["부유한","풍부한","넉넉한","풍족한","부자인"],
+["풍부한","많은","충분한","넉넉한","다량의"],
+["부족한","모자란","결핍된","불충분한","희박한"],
+["분명한","명확한","뚜렷한","확실한","명백한"],
+["애매한","모호한","불분명한","흐릿한","막연한"],
+["복잡한","뒤얽힌","까다로운","난해한"],
+["단순한","간단한","소박한","순수한"],
+["진지한","심각한","중대한","엄숙한"],
+["즉시","곧","바로","당장","즉각"],
+["결국","마침내","드디어","끝내","궁극적으로"],
+["아마도","어쩌면","대개","십중팔구"],
+["거의","대부분","대체로","얼추"],
+["완전히","전적으로","온전히","철저히"],
+["겨우","간신히","가까스로","고작"],
+["게다가","더구나","또한","덧붙여"],
+["그러나","하지만","그렇지만","반면에"],
+["그러므로","따라서","그래서","결과적으로"],
+["묶인","구속된","얽매인","매인"],
+["가능성이큰","할것같은","하기쉬운","틀림없는"]
+];
+const SYN_MAP=(()=>{
+  const m=new Map();
+  SYN_GROUPS.forEach((g,i)=>g.forEach(w=>{
+    stemSet(w).forEach(k=>{
+      if(k.length<1)return;
+      if(!m.has(k))m.set(k,new Set());
+      m.get(k).add(i);
+    });
+  }));
+  return m;
+})();
+function synIdx(set){
+  const out=new Set();
+  set.forEach(k=>{const g=SYN_MAP.get(k); if(g)g.forEach(i=>out.add(i));});
+  return out;
+}
+function synShare(setA,setB){ return shareSet(synIdx(setA),synIdx(setB)); }
+// 설명형 답안용: 공백 단위 토막 각각의 어간 후보
+function tokenStems(raw){
+  const out=[];
+  String(raw||"").split(/[\s,;/·]+/).filter(Boolean).forEach(t=>{
+    const st=stemSet(t);
+    if(st.size) out.push(st);
+  });
+  return out;
+}
+
+/* ---- 문자열 유사도 ---- */
+function lev(a,b){
+  const n=a.length,m=b.length;
+  if(!n)return m; if(!m)return n;
+  let prev=new Array(m+1); for(let j=0;j<=m;j++)prev[j]=j;
+  for(let i=1;i<=n;i++){
+    const cur=new Array(m+1); cur[0]=i;
+    for(let j=1;j<=m;j++){
+      cur[j]=Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+    prev=cur;
+  }
+  return prev[m];
+}
+function simJamo(a,b){
+  const A=toJamo(a),B=toJamo(b);
+  if(!A.length||!B.length)return 0;
+  return 1-lev(A,B)/Math.max(A.length,B.length);
+}
+function bigrams(s){
+  const m=new Map();
+  for(let i=0;i<s.length-1;i++){const g=s.slice(i,i+2); m.set(g,(m.get(g)||0)+1);}
+  return m;
+}
+function dice(a,b){
+  const A=bigrams(toJamo(a)),B=bigrams(toJamo(b));
+  let inter=0,ta=0,tb=0;
+  A.forEach((v,k)=>{ta+=v; if(B.has(k))inter+=Math.min(v,B.get(k));});
+  B.forEach(v=>{tb+=v;});
+  if(!ta||!tb)return 0;
+  return 2*inter/(ta+tb);
+}
+function contain(a,b){
+  if(!a||!b)return 0;
+  if(a===b)return 1;
+  if(a.includes(b)||b.includes(a)){
+    const r=Math.min(a.length,b.length)/Math.max(a.length,b.length);
+    if(Math.min(a.length,b.length)<2) return 0;
+    return 0.55+0.45*r;
+  }
+  return 0;
+}
+
+/* ---- 하나의 정답 후보와 비교 ---- */
+function pairScore(ans,ref){
+  if(!ans.n||!ref.n)return 0;
+  if(ans.n===ref.n) return 1;
+  let best=0;
+  if(shareSet(ans.s,ref.s)) best=Math.max(best,.95);
+  if(synShare(ans.s,ref.s)) best=Math.max(best,.92);
+  best=Math.max(best,.95*simJamo(ans.n,ref.n));
+  best=Math.max(best,.9*dice(ans.n,ref.n));
+  best=Math.max(best,contain(ans.n,ref.n));
+  // 설명형 답안: "할 수 있는 힘" 처럼 낱말 중 하나가 뜻과 통하면 애매 구간
+  if(ans.t.length>1){
+    for(const ts of ans.t){
+      if(shareSet(ts,ref.s)||synShare(ts,ref.s)){ best=Math.max(best,.78); break; }
+    }
+  }
+  return Math.min(best,1);
+}
+
+/* ---- 단어의 정답 후보 목록 ---- */
+function prep(raw){
+  return {raw:String(raw||"").trim(), n:normKo(raw), s:stemSet(raw), t:tokenStems(raw)};
+}
+const _refCache=new Map();
+function refVariants(meaning){
+  if(_refCache.has(meaning)) return _refCache.get(meaning);
+  const out=[]; const seen=new Set();
+  const push=raw=>{
+    const n=normKo(raw); if(!n||seen.has(n))return; seen.add(n);
+    out.push(prep(raw));
+  };
+  push(meaning);
+  splitMeaning(meaning).forEach(push);
+  splitMeaning(meaning).forEach(p=>{
+    const bare=p.replace(/[（(\[【<{][^）)\]】>}]*[）)\]】>}]/g,"");
+    if(bare!==p) push(bare);
+  });
+  _refCache.set(meaning,out);
+  return out;
+}
+
+/* ---- 최고 점수 ---- */
+function scoreAgainst(answer, meaning, prepared){
+  const a=prepared||prep(answer);
+  let best=0, hit=null;
+  refVariants(meaning).forEach(v=>{
+    const sc=pairScore(a,v);
+    if(sc>best){best=sc; hit=v.raw;}
+  });
+  return {score:best, matched:hit};
+}
+
+const ACCEPT=0.86, GRAY=0.60;
+
+/* ---- 인정된 답(별칭) ---- */
+function aliasKey(item,ansN){ return favKey(item.group,item.day,item.w)+"|"+ansN; }
+function isAlias(item,ansN){
+  const k=aliasKey(item,ansN);
+  return aliasOwn.has(k)||aliasGlobal.has(k);
+}
+
+/* ---- 최종 채점 ----
+   verdict: correct(정답) | close(비슷함 — 학생이 직접 판단) | wrong(오답)
+            | empty(빈 답) | english(영어로 씀) */
+function gradeAnswer(answer, item, others){
+  const ansN=normKo(answer);
+  if(!ansN) return {verdict:"empty", score:0, matched:item.m};
+  if(/[가-힣]/.test(item.m) && !/[가-힣]/.test(String(answer)))
+    return {verdict:"english", score:0, matched:item.m};
+  if(isAlias(item,ansN))
+    return {verdict:"correct", score:1, via:"alias", matched:item.m};
+
+  const A=prep(answer);
+  const mine=scoreAgainst(answer,item.m,A);
+  let bestOther=0, otherItem=null;
+  (others||[]).forEach(o=>{
+    if(o.m===item.m) return;
+    const sc=scoreAgainst(answer,o.m,A).score;
+    if(sc>bestOther){ bestOther=sc; otherItem=o; }
+  });
+  // 다른 단어의 뜻을 더 정확히 적은 경우 → 오답
+  if(bestOther>=ACCEPT && bestOther>mine.score+0.02)
+    return {verdict:"wrong", score:mine.score, other:otherItem, matched:mine.matched};
+
+  if(mine.score>=ACCEPT) return {verdict:"correct", score:mine.score, matched:mine.matched};
+  if(mine.score>=GRAY)   return {verdict:"close",   score:mine.score, matched:mine.matched};
+  return {verdict:"wrong", score:mine.score, matched:mine.matched};
+}
+
 /* ---------- QUIZ ---------- */
-function startQuiz(pool){
-  if(pool.length<4){alert("퀴즈는 단어가 4개 이상일 때 풀 수 있어요.");return;}
+function startQuiz(pool, mode){
+  mode = mode || "choice";
+  if(mode==="choice" && pool.length<4){alert("객관식 퀴즈는 단어가 4개 이상일 때 풀 수 있어요.");return;}
+  if(pool.length<1){alert("이 범위에 단어가 없어요.");return;}
   state.pool=pool.slice();
-  state.quiz={order:shuffle(pool.slice()), i:0, score:0, wrong:[], answered:false};
+  state.quiz={mode, order:shuffle(pool.slice()), i:0, score:0, wrong:[], answered:false};
   renderQuiz(); show("quiz");
 }
 function renderQuiz(){
   const q=state.quiz; const it=q.order[q.i];
+  const typing = q.mode==="type";
   $("quizWord").textContent=it.w;
+  $("quizPrompt").textContent = typing
+    ? "이 단어의 뜻을 직접 입력하세요"
+    : "알맞은 뜻을 고르세요";
   $("quizCounter").textContent=`${q.i+1} / ${q.order.length}`;
   $("quizBar").style.width=((q.i)/q.order.length)*100+"%";
   $("quizScore").textContent=`점수 ${q.score} / ${q.order.length}`;
   $("quizNext").classList.add("hidden");
   q.answered=false;
+  $("quizOpts").classList.toggle("hidden", typing);
+  $("quizType").classList.toggle("hidden", !typing);
+  if(typing) renderTypeQuestion();
+  else renderChoiceQuestion(it);
+}
+function renderChoiceQuestion(it){
   // build 4 options from the full group pool
   const allMeanings = itemsForScope(state.group,"ALL");
   const distractors = shuffle(allMeanings.filter(x=>x.m!==it.m)).slice(0,3);
@@ -569,6 +1035,130 @@ function renderQuiz(){
     box.appendChild(b);
   });
 }
+
+/* ---------- 주관식 채점 ---------- */
+function renderTypeQuestion(){
+  const inp=$("ansInput");
+  inp.value=""; inp.disabled=false;
+  $("ansSubmit").disabled=false;
+  $("ansFeed").classList.add("hidden");
+  $("ansFeed").innerHTML="";
+  setTimeout(()=>inp.focus(),30);
+}
+function feedback(kind,title,html,score){
+  const f=$("ansFeed");
+  f.className="ans-feed "+kind;
+  const bar = (typeof score==="number")
+    ? `<div class="sim"><span>뜻 유사도</span><span class="track"><i style="width:${Math.round(Math.max(0,Math.min(1,score))*100)}%"></i></span><span>${Math.round(score*100)}%</span></div>`
+    : "";
+  f.innerHTML=`<span class="fb-t">${title}</span><div class="fb-line">${html}</div>${bar}`;
+  f.classList.remove("hidden");
+  return f;
+}
+function lockAnswer(){
+  state.quiz.answered=true;
+  $("ansInput").disabled=true;
+  $("ansSubmit").disabled=true;
+}
+function markCorrect(){
+  state.quiz.score++;
+  $("quizScore").textContent=`점수 ${state.quiz.score} / ${state.quiz.order.length}`;
+  showNext();
+}
+function markWrong(it){
+  state.quiz.wrong.push(it);
+  const k=favKey(it.group,it.day,it.w);
+  if(!wrongStore.has(k)){ wrongStore.add(k); syncUpsert("wrong",it); }
+  showNext();
+}
+function showNext(){
+  $("quizNext").classList.remove("hidden");
+  setTimeout(()=>$("quizNext").focus(),30);
+}
+// 받침 유무에 맞는 조사 선택 (예: 능력+은, 재주+는)
+function josa(word,withJong,withoutJong){
+  const t=String(word||"").trim();
+  const c=t.charCodeAt(t.length-1)-0xAC00;
+  const has = (c>=0&&c<11172) ? (c%28)!==0 : /[a-zA-Z0-9]$/.test(t);
+  return t+(has?withJong:withoutJong);
+}
+function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+
+function submitAnswer(){
+  const q=state.quiz;
+  if(q.mode!=="type" || q.answered) return;
+  const it=q.order[q.i];
+  const raw=$("ansInput").value;
+  const res=gradeAnswer(raw, it, itemsForScope(state.group,"ALL"));
+
+  if(res.verdict==="english"){
+    feedback("maybe","한국어로 입력해 주세요","영어 단어가 아니라 <b>우리말 뜻</b>을 적어야 해요.");
+    $("ansInput").focus();
+    return;                       // 다시 입력할 기회를 줌
+  }
+
+  lockAnswer();
+  const model=`정답: <b>${esc(it.m)}</b>`;
+
+  if(res.verdict==="correct"){
+    const exact = res.via!=="alias" && res.score>=1;   // 뜻 그대로 쓴 경우
+    feedback("ok","⭕ 정답이에요!",
+      exact ? model
+            : `<b>‘${esc(raw.trim())}’</b>도 같은 뜻으로 인정했어요.<br>${model}`,
+      res.score);
+    markCorrect();
+    return;
+  }
+
+  if(res.verdict==="close"){
+    const f=feedback("maybe","🤔 비슷한 뜻 같아요",
+      `내 답: <b>${esc(raw.trim())}</b><br>${model}<br><span style="color:var(--ink-soft);font-size:13.5px">같은 뜻으로 쓴 거라면 정답으로 인정할게요. 스스로 판단해 보세요.</span>`,
+      res.score);
+    const btns=document.createElement("div"); btns.className="fb-btns";
+    const yes=document.createElement("button"); yes.className="solid"; yes.textContent="같은 뜻이에요 · 정답 인정";
+    const no=document.createElement("button"); no.textContent="다른 뜻이었어요 · 오답";
+    yes.onclick=()=>{
+      btns.remove();
+      const k=aliasKey(it,normKo(raw));
+      if(!aliasOwn.has(k)){ aliasOwn.add(k); syncAlias("alias",it,raw); }
+      feedback("ok","⭕ 정답으로 인정했어요",
+        `다음부터 <b>‘${esc(raw.trim())}’</b>도 이 단어의 정답으로 인정돼요.<br>${model}`, res.score);
+      markCorrect();
+    };
+    no.onclick=()=>{ btns.remove();
+      feedback("no","❌ 오답으로 처리했어요", model, res.score);
+      markWrong(it);
+    };
+    btns.appendChild(yes); btns.appendChild(no); f.appendChild(btns);
+    return;
+  }
+
+  // 오답 / 빈 답
+  let title="❌ 아쉬워요", body=model;
+  if(res.verdict==="empty"){ title="정답을 확인하세요"; }
+  else if(res.other){
+    const j = josa(raw.trim(),"은","는").slice(raw.trim().length);
+    body=`<b>‘${esc(raw.trim())}’</b>${j} <b>${esc(res.other.w)}</b>의 뜻이에요.<br>${model}`;
+  }else{
+    body=`내 답: <b>${esc(raw.trim())}</b><br>${model}`;
+  }
+  const f=feedback("no",title,body,res.verdict==="empty"?undefined:res.score);
+  if(res.verdict!=="empty"){
+    const btns=document.createElement("div"); btns.className="fb-btns";
+    const ask=document.createElement("button"); ask.className="ghost";
+    ask.textContent="이 뜻도 맞다고 생각해요 · 선생님께 인정 요청";
+    ask.onclick=()=>{
+      ask.disabled=true; ask.textContent="✓ 선생님께 요청했어요";
+      const k=aliasKey(it,normKo(raw));
+      if(!aliasAsked.has(k)){ aliasAsked.add(k); syncAlias("alias_req",it,raw); }
+    };
+    btns.appendChild(ask); f.appendChild(btns);
+  }
+  markWrong(it);
+}
+$("ansSubmit").onclick=submitAnswer;
+$("ansInput").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault(); submitAnswer();} });
+
 function answerQuiz(btn,chosen,correct){
   const q=state.quiz; if(q.answered)return; q.answered=true;
   const all=$("quizOpts").querySelectorAll(".opt");
@@ -596,11 +1186,17 @@ function finishQuiz(){
   const hasWrong=q.wrong.length>0;
   $("resWrong").classList.toggle("hidden",!hasWrong);
   state._lastQuizPool=state.pool;
+  state._lastQuizMode=q.mode;
   state._lastWrong=q.wrong.slice();
   show("result");
 }
-$("resRetry").onclick=()=>startQuiz(state._lastQuizPool);
-$("resWrong").onclick=()=>{ if(state._lastWrong&&state._lastWrong.length) startQuiz(dedupe(state._lastWrong)); };
+$("resRetry").onclick=()=>startQuiz(state._lastQuizPool, state._lastQuizMode);
+$("resWrong").onclick=()=>{
+  if(state._lastWrong&&state._lastWrong.length){
+    const pool=dedupe(state._lastWrong);
+    startQuiz(pool, (state._lastQuizMode==="choice"&&pool.length<4) ? "type" : state._lastQuizMode);
+  }
+};
 $("resHome").onclick=()=>show("mode");
 
 function startWrongQuiz(){
@@ -609,7 +1205,7 @@ function startWrongQuiz(){
   const byKey={}; all.forEach(it=>byKey[favKey(it.group,it.day,it.w)]=it);
   const items=[...wrongStore].map(k=>byKey[k]).filter(Boolean);
   if(items.length===0){alert("저장된 틀린 단어가 없어요. 먼저 퀴즈를 풀어보세요!");return;}
-  startQuiz(items);
+  startQuiz(items, items.length>=4 ? "choice" : "type");
 }
 
 /* ---------- LIST / FAVORITES ---------- */
@@ -681,7 +1277,7 @@ async function doLogin(){
   show("home");
 }
 function logout(){
-  favorites.clear(); wrongStore.clear();
+  favorites.clear(); wrongStore.clear(); aliasOwn.clear(); aliasGlobal.clear(); aliasAsked.clear();
   student.key=null; student.name=null;
   $("whoami").classList.add("hidden");
   $("loginName").value=""; $("loginPhone").value="";
@@ -693,12 +1289,37 @@ async function loadProgress(){
     const {data,error}=await sb.from("progress")
       .select("kind,word_id").eq("student_key",student.key);
     if(error)throw error;
-    favorites.clear(); wrongStore.clear();
+    favorites.clear(); wrongStore.clear(); aliasOwn.clear();
     (data||[]).forEach(r=>{
       if(r.kind==="fav") favorites.add(r.word_id);
       else if(r.kind==="wrong") wrongStore.add(r.word_id);
+      else if(r.kind==="alias") aliasOwn.add(r.word_id);
     });
   }catch(e){ console.warn("loadProgress 실패", e); }
+  // 선생님이 모든 학생에게 인정해 준 답안
+  try{
+    const {data,error}=await sb.from("progress")
+      .select("word_id").eq("student_key",ALIAS_OWNER).eq("kind","alias");
+    if(error)throw error;
+    aliasGlobal.clear();
+    (data||[]).forEach(r=>aliasGlobal.add(r.word_id));
+  }catch(e){ console.warn("공통 인정 답안 로드 실패", e); }
+}
+/* 주관식 인정 답안 저장
+   kind "alias"     : 학생이 스스로 같은 뜻이라고 인정한 답
+   kind "alias_req" : 선생님께 인정을 요청한 답 (점수에는 영향 없음) */
+async function syncAlias(kind,item,answer){
+  if(!sb||!student.key)return;
+  setSync("busy");
+  try{
+    await sb.from("progress").upsert({
+      student_key:student.key, student_name:student.name,
+      kind, word_id:aliasKey(item,normKo(answer)),
+      word:String(answer).trim(), grp:item.group, day:item.day,
+      updated_at:new Date().toISOString()
+    }, {onConflict:"student_key,kind,word_id"});
+  }catch(e){ console.warn("alias 저장 실패", e); }
+  setSync("ok");
 }
 async function syncUpsert(kind,item){
   if(!sb||!student.key)return;

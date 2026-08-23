@@ -39,7 +39,7 @@
   .gate-msg{font-size:13px;text-align:center;color:var(--wrong);font-weight:600;min-height:18px;margin-top:10px}
 
   /* stats row */
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
   @media(max-width:560px){.stats{grid-template-columns:1fr}}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
   .stat .n{font-size:28px;font-weight:800;color:var(--accent)}
@@ -77,6 +77,21 @@
   .vrow .vw{font-size:16px;font-weight:700;min-width:110px}
   .vrow .vg{font-size:11px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:2px 9px;flex:none}
   .vrow .vm{color:var(--ink-soft);flex:1;font-size:14px}
+  /* 주관식 인정 답안 */
+  .arow{display:flex;align-items:center;gap:10px;padding:13px 6px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .arow:last-child{border-bottom:none}
+  .arow .aw{font-size:15px;font-weight:800;min-width:96px}
+  .arow .aa{flex:1;min-width:140px;font-size:15px;color:var(--ink)}
+  .arow .aa small{color:var(--ink-soft);font-size:12px}
+  .tag{font-size:11px;font-weight:700;border-radius:99px;padding:3px 10px;flex:none}
+  .tag.self{background:var(--accent-soft);color:var(--accent)}
+  .tag.req{background:#f6edd8;color:var(--gold)}
+  .tag.glob{background:#e6f0ff;color:#2b5fa8}
+  .abtn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:8px 12px;font-size:12.5px;font-weight:700;flex:none}
+  .abtn:hover{border-color:var(--accent);color:var(--accent)}
+  .abtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .abtn:disabled{opacity:.5;cursor:default}
+  .note{font-size:12.5px;color:var(--ink-soft);line-height:1.6;margin-bottom:12px}
   .empty-state{text-align:center;padding:44px 20px;color:var(--ink-soft)}
   .empty-state .e-ic{font-size:38px;margin-bottom:10px}
   footer{margin-top:30px;text-align:center;font-size:12px;color:var(--ink-soft)}
@@ -130,6 +145,7 @@
       <div class="seg">
         <button data-tab="fav" class="active" id="tabFav">⭐ 즐겨찾기 <span id="favN"></span></button>
         <button data-tab="wrong" id="tabWrong">🔁 틀린 단어 <span id="wrongN"></span></button>
+        <button data-tab="alias" id="tabAlias">✍️ 주관식 인정 답안 <span id="aliasN"></span></button>
       </div>
       <div id="detailBody"></div>
     </div>
@@ -154,8 +170,10 @@ function show(n){screens.forEach(s=>$("screen-"+s).classList.toggle("hidden",s!=
 }
 
 let ALL=[];            // all rows
-let STUDENTS=[];       // [{key,name,fav:[],wrong:[]}]
+let STUDENTS=[];       // [{key,name,fav:[],wrong:[],alias:[]}]
 let current=null;
+const ALIAS_OWNER="__ALIAS__";   // 모든 학생에게 적용되는 인정 답안 저장용 가상 계정
+const GLOBAL=new Set();          // 전체 인정된 word_id
 
 /* ---- gate ---- */
 function tryGate(){
@@ -178,7 +196,7 @@ async function loadAll(){
   if(!sb){ alert("Supabase 연결에 실패했어요."); return; }
   try{
     const {data,error}=await sb.from("progress")
-      .select("student_key,student_name,kind,word,grp,day,updated_at")
+      .select("student_key,student_name,kind,word_id,word,grp,day,updated_at")
       .order("updated_at",{ascending:false});
     if(error)throw error;
     ALL=data||[];
@@ -192,12 +210,23 @@ async function loadAll(){
 }
 function groupStudents(){
   const map={};
+  GLOBAL.clear();
   ALL.forEach(r=>{
+    if(r.student_key===ALIAS_OWNER){
+      if(r.kind==="alias") GLOBAL.add(r.word_id);
+      return;                       // 공통 인정 답안은 학생 명단에 넣지 않음
+    }
     const k=r.student_key;
-    if(!map[k]) map[k]={key:k, name:r.student_name||k, fav:[], wrong:[]};
-    const entry={word:r.word, grp:r.grp, day:r.day};
-    if(r.kind==="fav") map[k].fav.push(entry);
-    else if(r.kind==="wrong") map[k].wrong.push(entry);
+    if(!map[k]) map[k]={key:k, name:r.student_name||k, fav:[], wrong:[], alias:[]};
+    if(r.kind==="fav") map[k].fav.push({word:r.word, grp:r.grp, day:r.day});
+    else if(r.kind==="wrong") map[k].wrong.push({word:r.word, grp:r.grp, day:r.day});
+    else if(r.kind==="alias"||r.kind==="alias_req"){
+      const seg=String(r.word_id||"").split("|");   // 그룹|DAY|단어|정규화답
+      map[k].alias.push({
+        word_id:r.word_id, kind:r.kind, answer:r.word||"",
+        eng:seg[2]||"", grp:r.grp||seg[0]||"", day:r.day||seg[1]||""
+      });
+    }
   });
   STUDENTS=Object.values(map).sort((a,b)=>a.name.localeCompare(b.name,"ko"));
 }
@@ -206,10 +235,12 @@ function groupStudents(){
 function renderStats(){
   const favTot=ALL.filter(r=>r.kind==="fav").length;
   const wrongTot=ALL.filter(r=>r.kind==="wrong").length;
+  const aliasTot=ALL.filter(r=>(r.kind==="alias"||r.kind==="alias_req")&&r.student_key!==ALIAS_OWNER).length;
   $("stats").innerHTML=`
     <div class="stat"><div class="n">${STUDENTS.length}</div><div class="l">학생 수</div></div>
     <div class="stat"><div class="n">${favTot}</div><div class="l">즐겨찾기 단어 (전체)</div></div>
-    <div class="stat"><div class="n">${wrongTot}</div><div class="l">틀린 단어 (전체)</div></div>`;
+    <div class="stat"><div class="n">${wrongTot}</div><div class="l">틀린 단어 (전체)</div></div>
+    <div class="stat"><div class="n">${aliasTot}</div><div class="l">주관식 인정 답안</div></div>`;
 }
 
 /* ---- list ---- */
@@ -225,8 +256,9 @@ function renderList(){
     const b=document.createElement("button"); b.className="srow";
     const favP = s.fav.length ? `<span class="pill fav">⭐ ${s.fav.length}</span>` : `<span class="pill zero">⭐ 0</span>`;
     const wrP  = s.wrong.length ? `<span class="pill wrong">🔁 ${s.wrong.length}</span>` : `<span class="pill zero">🔁 0</span>`;
+    const alP = s.alias.length ? `<span class="pill" style="background:#e6f0ff;color:#2b5fa8">✍️ ${s.alias.length}</span>` : "";
     b.innerHTML=`<span class="nm">${esc(s.name)}</span><span class="kk">${esc(s.key)}</span>
-      <span class="pills">${favP}${wrP}</span><span class="chev">›</span>`;
+      <span class="pills">${favP}${wrP}${alP}</span><span class="chev">›</span>`;
     b.onclick=()=>openDetail(s);
     box.appendChild(b);
   });
@@ -242,6 +274,7 @@ function openDetail(s){
   $("dKey").textContent=s.key;
   $("favN").textContent=`(${s.fav.length})`;
   $("wrongN").textContent=`(${s.wrong.length})`;
+  $("aliasN").textContent=`(${s.alias.length})`;
   setTab("fav");
   show("detail");
 }
@@ -249,6 +282,8 @@ function setTab(t){
   activeTab=t;
   $("tabFav").classList.toggle("active",t==="fav");
   $("tabWrong").classList.toggle("active",t==="wrong");
+  $("tabAlias").classList.toggle("active",t==="alias");
+  if(t==="alias"){ renderAlias(); return; }
   const arr = t==="fav" ? current.fav : current.wrong;
   const body=$("detailBody"); body.innerHTML="";
   if(arr.length===0){
@@ -264,6 +299,70 @@ function setTab(t){
       body.appendChild(r);
     });
 }
+/* ---- 주관식 인정 답안 ---- */
+function renderAlias(){
+  const body=$("detailBody"); body.innerHTML="";
+  const arr=current.alias;
+  if(arr.length===0){
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">✍️</div>주관식 퀴즈에서 인정하거나 요청한 답안이 없어요.</div>`;
+    return;
+  }
+  const note=document.createElement("p"); note.className="note";
+  note.innerHTML=`<b>스스로 인정</b>은 학생이 "비슷한 뜻"이라고 판단해 정답 처리한 답, <b>인정 요청</b>은 오답 처리된 뒤 인정해 달라고 보낸 답입니다.<br>
+    <b>[전체 인정]</b>을 누르면 그 답이 <b>모든 학생</b>에게 정답으로 인정됩니다.`;
+  body.appendChild(note);
+
+  arr.slice().sort((a,b)=>(a.grp||"").localeCompare(b.grp||"","ko")||(+a.day||0)-(+b.day||0))
+    .forEach(e=>{
+      const r=document.createElement("div"); r.className="arow";
+      const tag = e.kind==="alias"
+        ? `<span class="tag self">스스로 인정</span>`
+        : `<span class="tag req">인정 요청</span>`;
+      const where = e.grp ? `${esc(e.grp)}${e.day?" · DAY "+esc(e.day):""}` : "";
+      r.innerHTML=`<span class="aw">${esc(e.eng)}</span>
+        <span class="aa">${esc(e.answer)} ${where?`<small>${where}</small>`:""}</span>${tag}`;
+      const btn=document.createElement("button");
+      btn.className="abtn";
+      const paint=()=>{
+        const on=GLOBAL.has(e.word_id);
+        btn.classList.toggle("on",on);
+        btn.textContent = on ? "✓ 전체 인정됨 (취소)" : "전체 인정";
+      };
+      paint();
+      btn.onclick=async()=>{
+        btn.disabled=true;
+        const on=GLOBAL.has(e.word_id);
+        const ok = on ? await revokeGlobal(e) : await approveGlobal(e);
+        if(ok){ if(on) GLOBAL.delete(e.word_id); else GLOBAL.add(e.word_id); }
+        else alert("저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
+        btn.disabled=false; paint();
+      };
+      r.appendChild(btn);
+      body.appendChild(r);
+    });
+}
+async function approveGlobal(e){
+  if(!sb)return false;
+  try{
+    const {error}=await sb.from("progress").upsert({
+      student_key:ALIAS_OWNER, student_name:"(공통 인정 답안)",
+      kind:"alias", word_id:e.word_id, word:e.answer,
+      grp:e.grp, day:e.day, updated_at:new Date().toISOString()
+    },{onConflict:"student_key,kind,word_id"});
+    if(error)throw error;
+    return true;
+  }catch(err){ console.warn(err); return false; }
+}
+async function revokeGlobal(e){
+  if(!sb)return false;
+  try{
+    const {error}=await sb.from("progress").delete()
+      .eq("student_key",ALIAS_OWNER).eq("kind","alias").eq("word_id",e.word_id);
+    if(error)throw error;
+    return true;
+  }catch(err){ console.warn(err); return false; }
+}
+
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 $("backBtn").onclick=()=>{ renderList(); show("list"); };
 
