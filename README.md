@@ -93,38 +93,69 @@ Supabase `progress` 테이블을 그대로 쓰며 스키마 변경은 필요 없
 
 API 키는 브라우저에 두면 그대로 노출되므로, Supabase Edge Function 안에 숨깁니다.
 
-### 배포 방법
+### 배포 방법 ① 브라우저만으로 (터미널 없이)
 
 > **API 키는 절대 `index.html` 이나 저장소에 넣지 마세요.**
 > `index.html` 에 넣으면 학생이 소스 보기로 그대로 가져갈 수 있고,
 > 커밋하면 GitHub 기록에 영원히 남습니다. 키는 Supabase 환경변수에만 둡니다.
+>
+> 아래 작업은 **SQL Editor 가 아닙니다.** SQL Editor 는 데이터베이스 전용이라
+> 함수 배포나 키 등록을 할 수 없습니다. 왼쪽 메뉴의 **Edge Functions** 로 가세요.
 
-한 번에 끝내려면 (Supabase CLI 로그인 후):
+**1단계 — 키 등록**
+
+Supabase 대시보드 → 왼쪽 메뉴 **Edge Functions** → **Secrets** 탭 → `Add new secret`
+
+| 항목 | 값 |
+|---|---|
+| Name | `GEMINI_API_KEY` |
+| Value | AI Studio 에서 발급받은 키 |
+
+**2단계 — 함수 배포**
+
+**Edge Functions** → `Deploy a new function` → **Via Editor**
+
+- 함수 이름: `judge-meaning` (반드시 이 이름이어야 합니다)
+- 편집기 내용을 전부 지우고, 이 저장소의
+  `supabase/functions/judge-meaning/index.ts` 내용을 통째로 붙여넣기
+- `Deploy function`
+
+**3단계 — 확인**
+
+`admin.html` 을 열고 관리자 번호를 입력하면 명단 화면 아래에
+**🤖 AI가 인정한 답안** 칸이 있습니다. 거기 **[🔌 연결 확인]** 을 누르세요.
+
+- ✓ 초록색 → 끝났습니다. 학생 화면에서 바로 동작합니다.
+- ✗ 빨간색 → 무엇이 잘못됐는지와 어떻게 고치는지 그 자리에 알려 줍니다.
+
+`index.html` 의 함수 주소는 이미 채워져 있으므로 따로 고칠 것이 없습니다.
+
+### 배포 방법 ② 터미널
+
+Supabase CLI 를 쓰신다면 한 줄로 끝납니다.
 
 ```bash
 supabase login          # 처음 한 번만
-./setup-ai.sh AIzaSy...발급받은_키
+./setup-ai.sh AQ.Ab8...또는AIzaSy...발급받은_키
 ```
 
-키 등록 → 함수 배포 → `index.html` 의 `AI_JUDGE_URL` 설정까지 알아서 합니다.
+키 등록 → 함수 배포 → `index.html` 설정 → 연결 확인까지 자동으로 합니다.
 키는 화면에도 파일에도 남기지 않습니다.
 
-직접 하려면:
+### 끄고 싶을 때
 
-```bash
-supabase link --project-ref uxzsleryzpjaoqciyqvs
-supabase secrets set GEMINI_API_KEY=발급받은_키
-supabase functions deploy judge-meaning
-```
-
-그리고 `index.html` 위쪽 주소를 채웁니다.
+`index.html` 의 주소를 비우면 됩니다. 규칙 채점만 남고 나머지는 그대로 동작합니다.
 
 ```js
-const AI_JUDGE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning";
-const AI_SHARE_ACCEPTED = true;   // AI가 인정한 답을 모든 학생에게 공유 (호출 수 절감)
+const AI_JUDGE_URL = "";
 ```
 
-비워 두면(`""`) AI 없이 규칙 채점만 합니다. 언제든 껐다 켤 수 있습니다.
+### 함수가 없거나 죽어 있어도 수업은 멈추지 않습니다
+
+- 호출은 6초에서 끊고 규칙 판정으로 되돌아갑니다.
+- **연달아 2번 실패하면 그 접속에서는 AI 호출을 아예 건너뜁니다.**
+  배포를 깜빡했거나 서버가 죽어도 학생이 문제마다 기다리지 않습니다.
+  (실제로 함수가 없는 상태에서 재어 보면 1·2번째 오답 약 0.3초, 3번째부터 0.04초입니다.)
 
 ### 키 형식 (AIza 와 AQ.)
 

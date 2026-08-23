@@ -137,8 +137,10 @@
       <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <h2 style="font-size:18px;font-weight:800">🤖 AI가 인정한 답안</h2>
         <span class="count" id="aiCount" style="font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px"></span>
-        <button class="refresh" id="aiToggle" style="margin-left:auto;padding:8px 14px">펼치기</button>
+        <button class="refresh" id="aiCheck" style="margin-left:auto;padding:8px 14px">🔌 연결 확인</button>
+        <button class="refresh" id="aiToggle" style="padding:8px 14px">펼치기</button>
       </div>
+      <div id="aiStatus" class="hidden" style="border-radius:10px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.6"></div>
       <p class="note">AI가 "같은 뜻"이라고 판정해 <b>모든 학생</b>에게 적용된 답안입니다. 잘못된 것이 있으면 지워 주세요.</p>
       <div id="aiBody" class="hidden"></div>
     </div>
@@ -182,6 +184,7 @@ function show(n){screens.forEach(s=>$("screen-"+s).classList.toggle("hidden",s!=
 let ALL=[];            // all rows
 let STUDENTS=[];       // [{key,name,fav:[],wrong:[],alias:[]}]
 let current=null;
+const AI_JUDGE_URL="https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning";
 const ALIAS_OWNER="__ALIAS__";      // 선생님이 승인한 공통 인정 답안 가상 계정
 const ALIAS_AI_OWNER="__ALIAS_AI__"; // AI가 인정해 공유된 답안 가상 계정
 const GLOBAL=new Set();            // 전체 인정된 word_id
@@ -319,6 +322,47 @@ function renderAiPanel(){
   });
 }
 $("aiToggle").onclick=()=>{ aiOpen=!aiOpen; renderAiPanel(); };
+
+/* ---- AI 채점 연결 확인 ---- */
+function aiStatus(kind,html){
+  const box=$("aiStatus");
+  box.classList.remove("hidden");
+  const c = kind==="ok" ? ["var(--accent)","var(--accent-soft)"]
+          : kind==="no" ? ["var(--wrong)","var(--wrong-soft)"]
+          : ["var(--gold)","#fbf4e4"];
+  box.style.border="1px solid "+c[0];
+  box.style.background=c[1];
+  box.innerHTML=html;
+}
+$("aiCheck").onclick=async()=>{
+  const btn=$("aiCheck"); btn.disabled=true; const label=btn.textContent; btn.textContent="확인 중…";
+  aiStatus("wait","함수를 부르는 중입니다…");
+  try{
+    const r=await fetch(AI_JUDGE_URL+"?selftest=1",{
+      headers:{ "Authorization":"Bearer "+SUPABASE_ANON, "apikey":SUPABASE_ANON }
+    });
+    const d=await r.json().catch(()=>({}));
+    if(d.ok){
+      aiStatus("ok",`<b>✓ AI 채점이 정상 동작합니다.</b><br>
+        키 종류: ${esc(d.keyType||"-")} · 모델: ${esc(d.model||"-")} · 인증: ${esc(d.auth||"-")}<br>
+        시험 채점: "subsequently" 에 <b>"추후에"</b> → <b>${esc(d.sample?.verdict||"-")}</b>
+        ${d.sample?.reason?`(${esc(d.sample.reason)})`:""}`);
+    }else if(r.status===404){
+      aiStatus("no","<b>✗ 함수를 찾을 수 없습니다.</b><br>Supabase 대시보드 → Edge Functions 에서 <b>judge-meaning</b> 함수를 배포했는지 확인해 주세요.");
+    }else{
+      const detail=String(d.detail||d.error||("HTTP "+r.status));
+      const hint = /ACCESS_TOKEN_TYPE_UNSUPPORTED|401|403/.test(detail)
+        ? "<br>→ 이 키로는 Gemini API 를 쓸 수 없습니다. AI Studio 에서 키를 다시 발급해 보세요."
+        : /GEMINI_API_KEY/.test(detail)
+        ? "<br>→ Edge Functions → Secrets 에 <b>GEMINI_API_KEY</b> 를 등록해 주세요."
+        : "";
+      aiStatus("no",`<b>✗ 호출에 실패했습니다.</b><br><span style="font-family:ui-monospace,monospace;font-size:12px">${esc(detail).slice(0,300)}</span>${hint}`);
+    }
+  }catch(e){
+    aiStatus("no","<b>✗ 함수에 연결하지 못했습니다.</b><br>주소가 맞는지, 함수가 배포되었는지 확인해 주세요.");
+  }
+  btn.disabled=false; btn.textContent=label;
+};
 async function deleteShared(owner,wordId){
   if(!sb)return false;
   try{
