@@ -306,8 +306,8 @@
       <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">6개 보기에서 뜻 고르기 · 20문제</span></span></button>
       <button class="mode-btn" data-mode="typequiz"><span class="ic">⌨️</span><span><span class="m-title">주관식 퀴즈</span><br><span class="m-sub">뜻을 직접 입력 · 20문제</span></span></button>
       <button class="mode-btn" data-mode="list"><span class="ic">📖</span><span><span class="m-title">단어장</span><br><span class="m-sub">전체 목록 보기 · 즐겨찾기 표시</span></span></button>
-      <button class="mode-btn" data-mode="fav"><span class="ic">⭐</span><span><span class="m-title">즐겨찾기</span><br><span class="m-sub">별표한 단어만 모아보기</span></span></button>
-      <button class="mode-btn" data-mode="wrongquiz" id="wrongBtn"><span class="ic">🔁</span><span><span class="m-title">틀린 단어 다시 풀기</span><br><span class="m-sub">퀴즈에서 틀린 단어만 모아 퀴즈</span></span></button>
+      <button class="mode-btn" data-mode="fav"><span class="ic">⭐</span><span><span class="m-title">즐겨찾기</span><br><span class="m-sub">별표한 단어 모아보기 · 재시험</span></span></button>
+      <button class="mode-btn" data-mode="wrongquiz" id="wrongBtn"><span class="ic">🔁</span><span><span class="m-title">틀린 단어</span><br><span class="m-sub">틀렸던 단어 보기 · 재시험 · 제외</span></span></button>
     </div>
   </section>
 
@@ -385,6 +385,11 @@
       <div class="list-head">
         <h2 id="listTitle"></h2>
         <span class="count" id="listCount"></span>
+      </div>
+      <div id="listActions" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button id="listQuizBtn" style="background:var(--accent);color:#fff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">✏️ 객관식 재시험</button>
+        <button id="listTypeBtn" style="border:1px solid var(--accent);color:var(--accent);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">⌨️ 주관식 재시험</button>
+        <span id="listHint" style="font-size:12px;color:var(--ink-soft);align-self:center"></span>
       </div>
       <div id="listBody"></div>
     </div>
@@ -1242,7 +1247,7 @@ document.querySelectorAll(".mode-btn").forEach(btn=>{
     else if(mode==="typequiz") startQuiz(itemsForScope(state.group,state.scopeDays),"type");
     else if(mode==="list") openList("list");
     else if(mode==="fav") openList("fav");
-    else if(mode==="wrongquiz") startWrongQuiz();
+    else if(mode==="wrongquiz") openList("wrong");
   });
 });
 $("changeScope").onclick=()=>openDayScreen(state.group);
@@ -2424,45 +2429,75 @@ $("resWrong").onclick=()=>{
 };
 $("resHome").onclick=()=>show("mode");
 
-function startWrongQuiz(){
-  // pull from persistent store, resolve word_ids back to items in this group
+/* ---------- LIST / FAVORITES ---------- */
+/* 이 그룹에서 틀린 단어들 (챕터 무관, 저장된 전체) */
+function wrongItems(){
   const all=itemsForScope(state.group,"ALL");
   const byKey={}; all.forEach(it=>byKey[favKey(it.group,it.day,it.w)]=it);
-  const items=[...wrongStore].map(k=>byKey[k]).filter(Boolean);
-  if(items.length===0){alert("저장된 틀린 단어가 없어요. 먼저 퀴즈를 풀어보세요!");return;}
-  startQuiz(items, items.length>=CHOICE_COUNT ? "choice" : "type");
+  return [...wrongStore].map(k=>byKey[k]).filter(Boolean);
 }
 
-/* ---------- LIST / FAVORITES ---------- */
 function openList(kind){
   let items, title;
   if(kind==="fav"){
     items=itemsForScope(state.group,state.scopeDays).filter(isFav);
     title="⭐ 즐겨찾기";
+  }else if(kind==="wrong"){
+    items=wrongItems();                       // 틀린 단어는 범위와 무관하게 전부
+    title="🔁 틀린 단어";
   }else{
     items=itemsForScope(state.group,state.scopeDays);
     title="📖 단어장";
   }
-  $("listTitle").textContent=`${title} · ${state.scopeLabel}`;
+  $("listTitle").textContent = kind==="wrong" ? `${title} · 전체` : `${title} · ${state.scopeLabel}`;
   $("listCount").textContent=`${items.length}개`;
+
+  // 즐겨찾기·틀린 단어는 그 목록으로 바로 재시험을 볼 수 있다
+  const acts=$("listActions");
+  const canQuiz=(kind==="fav"||kind==="wrong") && items.length>0;
+  acts.classList.toggle("hidden", !canQuiz);
+  if(canQuiz){
+    const enoughForChoice=items.length>=CHOICE_COUNT;
+    $("listQuizBtn").disabled=!enoughForChoice;
+    $("listQuizBtn").style.opacity=enoughForChoice?"1":".45";
+    $("listHint").textContent=enoughForChoice?"":`객관식은 ${CHOICE_COUNT}개 이상일 때 볼 수 있어요`;
+    $("listQuizBtn").onclick=()=>{ if(enoughForChoice) startQuiz(items,"choice"); };
+    $("listTypeBtn").onclick=()=>startQuiz(items,"type");
+  }
+
   const body=$("listBody"); body.innerHTML="";
   if(items.length===0){
-    body.innerHTML=`<div class="empty-state"><div class="e-ic">${kind==="fav"?"⭐":"📭"}</div>
-      ${kind==="fav"?"아직 즐겨찾기한 단어가 없어요.<br>플래시카드에서 별표를 눌러보세요.":"이 범위에 단어가 없습니다."}</div>`;
+    const msg = kind==="fav" ? "아직 즐겨찾기한 단어가 없어요.<br>플래시카드에서 별표를 눌러보세요."
+              : kind==="wrong" ? "틀린 단어가 없어요.<br>퀴즈에서 틀리면 여기에 쌓입니다."
+              : "이 범위에 단어가 없습니다.";
+    body.innerHTML=`<div class="empty-state"><div class="e-ic">${kind==="fav"?"⭐":kind==="wrong"?"🎉":"📭"}</div>${msg}</div>`;
   }else{
     items.forEach(it=>{
       const row=document.createElement("div"); row.className="vrow";
-      const star=document.createElement("button");
-      star.className="vstar"+(isFav(it)?" on":""); star.textContent="★";
-      star.onclick=()=>{
-        const k=favKey(it.group,it.day,it.w);
-        if(favorites.has(k)){favorites.delete(k); syncDelete("fav",k);}
-        else {favorites.add(k); syncUpsert("fav",it);}
-        star.classList.toggle("on");
-        if(kind==="fav")openList("fav");
-      };
-      row.innerHTML=`<span class="vw">${it.w}</span><span class="vp">${it.p||""}</span><span class="vm">${it.m}</span>`;
-      row.appendChild(star);
+      row.innerHTML=`<span class="vw">${esc(it.w)}</span><span class="vp">${esc(it.p||"")}</span><span class="vm">${esc(it.m)}</span>`;
+      if(kind==="wrong"){
+        // 다 외운 단어는 목록에서 제외한다 (기록에서도 지운다)
+        const del=document.createElement("button");
+        del.style.cssText="border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--ink-soft);flex:none";
+        del.textContent="제외";
+        del.onclick=()=>{
+          const k=favKey(it.group,it.day,it.w);
+          wrongStore.delete(k); syncDelete("wrong",k);
+          openList("wrong");
+        };
+        row.appendChild(del);
+      }else{
+        const star=document.createElement("button");
+        star.className="vstar"+(isFav(it)?" on":""); star.textContent="★";
+        star.onclick=()=>{
+          const k=favKey(it.group,it.day,it.w);
+          if(favorites.has(k)){favorites.delete(k); syncDelete("fav",k);}
+          else {favorites.add(k); syncUpsert("fav",it);}
+          star.classList.toggle("on");
+          if(kind==="fav")openList("fav");
+        };
+        row.appendChild(star);
+      }
       body.appendChild(row);
     });
   }
