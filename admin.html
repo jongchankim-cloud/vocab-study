@@ -165,7 +165,7 @@
     <div class="panel" id="testPanel" style="margin-top:16px">
       <div class="list-head" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <h2 style="font-size:18px;font-weight:800">🧪 채점 테스트</h2>
-        <button class="refresh" id="testSuiteBtn" style="margin-left:auto;padding:8px 14px">검증 세트 실행 (5건)</button>
+        <button class="refresh" id="testSuiteBtn" style="margin-left:auto;padding:8px 14px">검증 세트 실행 (8건)</button>
       </div>
       <p class="note">원하는 단어와 답을 넣어 AI 판정을 바로 확인합니다. 퀴즈에 그 단어가 나오길 기다릴 필요가 없습니다.<br>
         (교재 뜻과 글자가 똑같은 답, 조사만 붙인 답 등은 학생 화면에서 AI 없이 먼저 걸러집니다 — 여기는 AI 판정만 봅니다)</p>
@@ -673,10 +673,13 @@ const T_SUITE=[
   {w:"offer",       m:"제의[제안]하다",a:"할인",       expect:["correct"]},
   {w:"less than",   m:"~ 미만의",    a:"~보다 작다",  expect:["pos","wrong"]},
   {w:"momentary",   m:"순간적인",    a:"순간적으로",  expect:["pos","wrong"]},
+  {w:"in addition to",  m:"~에 더하여",  a:"더하다",     expect:["pos","wrong"]},
+  {w:"combined with",   m:"~와 결합되어", a:"결합되다",   expect:["pos","wrong"]},
+  {w:"through the night",m:"밤새도록",   a:"밤새다",     expect:["pos","wrong"]},
 ];
 $("testSuiteBtn").onclick=async()=>{
   const btn=$("testSuiteBtn"); btn.disabled=true;
-  const box=$("tResult"); box.innerHTML=`<p class="note">5건 판정 중… (몇 초 걸립니다)</p>`;
+  const box=$("tResult"); box.innerHTML=`<p class="note">${T_SUITE.length}건 판정 중… (몇 초 걸립니다)</p>`;
   let html="", pass=0;
   for(const t of T_SUITE){
     try{
