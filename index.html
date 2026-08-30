@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-08-30-4";
+const APP_VER = "2026-08-30-5";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3222,7 +3222,9 @@ async function judgeWithAI(item,answer,formMismatch){
   const key=item.w+"|"+normKo(answer);
   if(aiCache.has(key)) return aiCache.get(key);
   const ctl=new AbortController();
-  const timer=setTimeout(()=>ctl.abort(),6000);
+  /* 모델이 생각할 시간을 주면(thinkingBudget 512) 판정이 정확해지는 대신
+     2~3초 걸린다. 6초로는 빠듯해서 10초로 둔다. */
+  const timer=setTimeout(()=>ctl.abort(),10000);
   try{
     const r=await fetch(AI_JUDGE_URL,{
       method:"POST",
