@@ -11,6 +11,7 @@
  * 선택 환경변수:
  *   GEMINI_MODEL    사용할 모델 (기본: gemini-2.5-flash)
  *   ALLOWED_ORIGIN  CORS 허용 도메인 (기본: * )
+ *   GEMINI_THINKING_BUDGET  모델이 생각하는 데 쓸 토큰 (기본: 512, 0 이면 끔)
  */
 
 const API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
@@ -31,6 +32,24 @@ const MODELS = [
   "gemini-3.1-flash-lite",
   "gemini-3.5-flash",
 ].filter(Boolean) as string[];
+
+/* ---- 사고 예산 ----
+   이 채점은 "그 영어 단어가 그 품사인가 → 답이 그 뜻인가 → 품사가 맞는가" 를
+   차례로 따져야 하는 일이다. 예산을 0 으로 두면 모델이 첫인상으로 답해서
+   "동면하다에서 하다만 뗐으니 같은 뜻" 같은 판정을 낸다.
+
+   2026-08 측정 (gemini-2.5-flash, 35문항):
+     예산 0     32/35   평균  617ms   ← 예전 설정
+     예산 128   26/35   평균 1151ms   생각하다 잘려서 오히려 더 나쁘다
+     예산 256   34/35   평균 1522ms
+     예산 512   35/35   평균 2367ms   ← 만점을 내는 가장 낮은 예산
+     예산 1024  35/35   평균 3522ms
+     무제한     35/35   평균 3781ms   최악 5625ms 로 시간제한에 걸릴 수 있다  */
+const THINKING_BUDGET = (() => {
+  const v = Number(Deno.env.get("GEMINI_THINKING_BUDGET") ?? 512);
+  // 잘못된 값이 들어오면 조용히 응답이 잘리므로 기본값으로 되돌린다
+  return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 512;
+})();
 
 const CORS = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
@@ -201,10 +220,10 @@ async function callRaw(model: string, prompt: string, schema: unknown, auth: Aut
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0,
-      maxOutputTokens: 120,
+      maxOutputTokens: THINKING_BUDGET > 0 ? THINKING_BUDGET + 400 : 120,
       responseMimeType: "application/json",
       responseSchema: schema,
-      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
+      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: THINKING_BUDGET } }),
     },
   };
   let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -212,7 +231,7 @@ async function callRaw(model: string, prompt: string, schema: unknown, auth: Aut
   if (auth === "header") headers["x-goog-api-key"] = API_KEY;
   else if (auth === "bearer") headers["Authorization"] = `Bearer ${API_KEY}`;
   else url += `?key=${encodeURIComponent(API_KEY)}`;
-  return await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) });
+  return await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
 }
 
 async function callGemini(model: string, prompt: string, auth: Auth, omitThinkingConfig: boolean) {
@@ -220,10 +239,10 @@ async function callGemini(model: string, prompt: string, auth: Auth, omitThinkin
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
       temperature: 0,
-      maxOutputTokens: 120,
+      maxOutputTokens: THINKING_BUDGET > 0 ? THINKING_BUDGET + 400 : 120,
       responseMimeType: "application/json",
       responseSchema: SCHEMA,
-      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
+      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: THINKING_BUDGET } }),
     },
   };
   let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -236,7 +255,7 @@ async function callGemini(model: string, prompt: string, auth: Auth, omitThinkin
     method: "POST",
     headers,
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(8000),
+    signal: AbortSignal.timeout(15000),
   });
 }
 
