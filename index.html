@@ -2599,6 +2599,10 @@ async function verifyStudent(name,phone){
     if(error) throw error;
     const r=Array.isArray(data)?data[0]:data;
     if(!r||typeof r.ok!=="boolean") throw new Error("빈 응답");
+    /* 성적 사이트가 대답을 못 하는 경우(upstream_error)는 "명단에 없다"가 아니다.
+       이때까지 막아 버리면 성적 사이트가 잠깐 멈춘 동안 전교생이 못 들어온다.
+       서버가 죽었을 때와 똑같이 STRICT_ROSTER 설정에 맡긴다. */
+    if(!r.ok && r.reason==="upstream_error") return fallback;
     return r;
   }catch(e){
     console.warn("명단 확인 실패", e);
