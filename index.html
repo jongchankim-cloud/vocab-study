@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-08-30-3";
+const APP_VER = "2026-08-30-4";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2332,9 +2332,11 @@ const ADV_END=["적으로","스럽게","롭게","답게","하게","히"];
 // "하여"·"해서" 는 연결형이므로 여기 두지 않는다 (아래 CONN_ONLY_END 참고)
 /* "하기"·"되기" 는 용언을 명사로 바꾼 형태(명사형)라 따로 다룬다 — 아래 NOMIN_END 참고.
    "포함하다"(용언)에도 "원자"(체언)에도 맞지 않는다. */
+// 홀글자 "인" 은 넣지 않는다 — "확인"·"용인"·"요인"·"관리인" 은 관형형이 아니라 명사다.
+// 관형형으로 쓰이는 "-적인" 은 위에 따로 있다.
 const VERB_ONLY_END=["하다","되다","이다","시키다","당하다","스럽다","스러운","롭다","로운","답다","다운",
                      "적인","하는","되는","했다","됐다","되었다","한다",
-                     "한","인","운"];
+                     "한","운"];
 // 조사일 수도, 어미일 수도 있어 양쪽 다 가능한 것 ("짐은"=명사+조사, "넓은"=형용사)
 const AMBIG_END=["은","는"];
 // 사실상 조사로만 쓰이는 것 — 붙어 있으면 체언으로 본다.
@@ -2449,11 +2451,25 @@ function addedParticle(answer,item){
   return null;
 }
 
+/* 답이 교재의 뜻에서 "하다"·"되다" 만 뗀 형태인가 — "제한하다" 에 "제한".
+   이건 용언을 명사로 바꾼 명사형이다. 끝 글자가 우연히 관형형 어미와 같아도
+   ("제한" 의 "한") 명사로 봐야 한다. */
+function isGlossStem(answer,item){
+  const a=normKo(answer);
+  if(!a) return false;
+  return refVariants(answerText(item)).some(v=>{
+    for(const suf of ["하다","되다","시키다","당하다"]){
+      if(v.n.length>suf.length && v.n.endsWith(suf) && v.n.slice(0,-suf.length)===a) return true;
+    }
+    return false;
+  });
+}
 /* 품사가 맞는가. 선생님이 적어 둔 뜻과 글자가 똑같으면 검사하지 않는다. */
 function posOk(answer,item){
   const need=neededPos(item);
   if(!need.size) return true;
-  for(const c of posSet(answer)) if(need.has(c)) return true;
+  const cand = isGlossStem(answer,item) ? new Set(["체언"]) : posSet(answer);
+  for(const c of cand) if(need.has(c)) return true;
   return false;
 }
 /* 품사 이름은 선생님이 p 를 적어 둔 경우에만 쓴다.
@@ -2926,7 +2942,11 @@ function bracketVariants(text){
   const tail=(before.match(/[가-힣A-Za-z~]+$/)||[""])[0];   // 갈아끼울 끝말
   const head=before.slice(0,before.length-tail.length);
   out.push((before+after).trim());                          // 대괄호를 걷어낸 형태
-  out.push((head+inner+after).trim());                      // 대괄호 안의 말로 바꾼 형태
+  /* 대괄호 안에 여러 개면 각각에 뒷말을 붙여 펼친다.
+     "시작[출시/착수]하다" → 출시하다, 착수하다.
+     통째로 두면 나중에 "/" 에서 잘려 "출시" 라는 엉뚱한 정답이 생긴다. */
+  inner.split(/[,/·]/).map(x=>x.trim()).filter(Boolean)
+       .forEach(alt=>out.push((head+alt+after).trim()));
   return out.filter(Boolean);
 }
 
@@ -3011,6 +3031,17 @@ function gradeAnswer(answer, item, others){
   // 뜻은 맞는데 조사를 붙인 경우 — 사전에 물어볼 것도 없이 형태 오답
   const ap = mine.score<1 ? addedParticle(answer,item) : null;
   if(ap) return {verdict:"pos", score:mine.score, matched:ap.want||item.m, particle:ap.particle};
+
+  /* 교재 뜻이 명사인데, 끝 글자만 떨어뜨린 답은 오답이다.
+     "언론인"(journalist) 에 "언론", "관리인" 에 "관리" — 글자가 거의 같아 유사도는
+     높지만 뜻이 다른 말이다. 뒤에 다른 말을 붙인 답("관리자")은 여기 걸리지 않는다.
+     용언 뜻("잠재적인" 에 "잠재적")은 품사 검사가 더 친절히 알려 주므로 건드리지 않는다. */
+  {
+    const need0=neededPos(item);
+    if(mine.score<1 && need0.size===1 && need0.has("체언") &&
+       refVariants(answerText(item)).some(v=>v.n.length>=3 && v.n.slice(0,-1)===ansN))
+      return {verdict:"wrong", score:mine.score, matched:item.m};
+  }
 
   // 답의 품사가 교재의 뜻과 다른가 — 점수와 무관하게 기록해서 AI 에게 알린다
   const posBad = mine.score<1 && !posOk(answer,item);
