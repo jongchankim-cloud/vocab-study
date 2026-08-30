@@ -395,7 +395,11 @@
     </div>
   </section>
 
-  <footer>능률VOCA 단어 학습 · 모바일에서도 잘 작동합니다</footer>
+  <footer>능률VOCA 단어 학습 · 모바일에서도 잘 작동합니다 · <span id="verTag"></span></footer>
+  <div id="verBanner" class="hidden" style="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink,#333);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:99;display:flex;gap:12px;align-items:center">
+    새 버전이 나왔어요
+    <button onclick="location.href=location.pathname+'?r='+Date.now()" style="background:#fff;color:#333;border:none;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer">새로고침</button>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -416,6 +420,21 @@ try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } catch(e){ conso
    true 로 바꾸면 성적 사이트가 응답하지 않을 때도 입장을 막습니다
    (기본값 false: 서버 문제로 수업이 끊기지 않도록). */
 const STRICT_ROSTER = false;
+
+/* ---- 버전 표시·새 버전 감지 ----
+   브라우저가 옛날 페이지를 캐시로 들고 있으면 새 기능이 "사라진" 것처럼 보인다
+   (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
+   1) 화면 아래에 버전을 항상 보여 주고
+   2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
+const APP_VER = "2026-08-30-1";
+document.addEventListener("DOMContentLoaded", ()=>{
+  const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
+  if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
+  fetch(location.pathname, {cache:"no-store"}).then(r=>r.text()).then(html=>{
+    const m=html.match(/APP_VER\s*=\s*"([^"]+)"/);
+    if(m && m[1]!==APP_VER) document.getElementById("verBanner").classList.remove("hidden");
+  }).catch(()=>{});
+});
 
 const AI_JUDGE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co/functions/v1/judge-meaning";
 // ↑ 함수를 아직 배포하지 않았다면 호출이 실패하고 규칙 채점으로 넘어갑니다 (수업에 지장 없음).
