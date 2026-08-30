@@ -129,7 +129,9 @@
   .fc-mean{font-size:26px;font-weight:700;line-height:1.4}
   .fc-hint{position:absolute;bottom:16px;font-size:12px;color:var(--ink-soft)}
   .fc-back .fc-hint{color:rgba(255,255,255,.7)}
-  .fav-star{position:absolute;top:14px;right:16px;font-size:24px;color:var(--line);transition:.15s;z-index:3}
+  .fav-star{position:absolute;top:14px;right:16px;font-size:24px;color:var(--line);transition:.15s;z-index:3;cursor:pointer}
+  #quizBody{position:relative}
+  #quizBody .fav-star{top:-2px;right:2px;padding:6px}
   .fav-star.on{color:var(--gold)}
   .fc-back .fav-star{color:rgba(255,255,255,.45)}
   .fc-back .fav-star.on{color:#ffd97a}
@@ -345,6 +347,7 @@
       <div class="progress"><i id="quizBar"></i></div>
       <div class="counter" id="quizCounter"></div>
       <div id="quizBody">
+        <span class="fav-star" id="favQuiz" title="즐겨찾기">★</span>
         <div class="quiz-q" id="quizWord"></div>
         <div class="quiz-prompt" id="quizPrompt">알맞은 뜻을 고르세요</div>
         <div id="quizOpts"></div>
@@ -426,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-08-30-1";
+const APP_VER = "2026-08-30-2";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -1301,16 +1304,30 @@ function updateFavStar(){
   $("favBack").classList.toggle("on",on);
 }
 $("fcInner").onclick=()=>{state.flipped=!state.flipped;$("fcInner").classList.toggle("flipped",state.flipped);};
-function toggleFav(e){
-  e.stopPropagation();
-  const it=state.pool[state.idx];
+/* 즐겨찾기 넣고 빼기 — 플래시카드·퀴즈 공용 */
+function favToggleItem(it){
   const k=favKey(it.group,it.day,it.w);
   if(favorites.has(k)){favorites.delete(k); syncDelete("fav",k);}
   else {favorites.add(k); syncUpsert("fav",it);}
+}
+function toggleFav(e){
+  e.stopPropagation();
+  favToggleItem(state.pool[state.idx]);
   updateFavStar();
 }
 $("favFront").onclick=toggleFav;
 $("favBack").onclick=toggleFav;
+/* 퀴즈 화면의 별표 — 지금 풀고 있는 문제의 단어를 즐겨찾기에 넣고 뺀다 */
+function updateQuizFavStar(){
+  const q=state.quiz; if(!q) return;
+  $("favQuiz").classList.toggle("on", isFav(q.order[q.i]));
+}
+$("favQuiz").onclick=e=>{
+  e.stopPropagation();
+  const q=state.quiz; if(!q) return;
+  favToggleItem(q.order[q.i]);
+  updateQuizFavStar();
+};
 $("flashNext").onclick=()=>{state.idx=(state.idx+1)%state.pool.length;renderFlash();};
 $("flashPrev").onclick=()=>{if(state.idx>0){state.idx--;renderFlash();}};
 $("flashShuffle").onclick=()=>{shuffle(state.pool);state.idx=0;renderFlash();};
@@ -2204,6 +2221,7 @@ function renderQuiz(){
   q.answered=false;
   $("quizOpts").classList.toggle("hidden", typing);
   $("quizType").classList.toggle("hidden", !typing);
+  updateQuizFavStar();
   if(typing) renderTypeQuestion();
   else renderChoiceQuestion(it);
 }
