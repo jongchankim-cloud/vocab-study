@@ -68,6 +68,14 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
   예: less than 은 "~ 미만의" 라는 관형 표현 → 서술형 "~보다 작다" 는 pos
   예: momentary 는 형용사 "순간적인" 뿐 → 부사형 "순간적으로" 는 pos
       (그건 momentarily 의 뜻이다. 관형형과 부사형은 다른 품사다)
+· 표제어가 두 낱말 이상인 구(句)면, 그 구 전체의 품사만 본다.
+  구를 이루는 낱낱의 단어가 가진 품사는 근거가 되지 않는다.
+  구는 대개 품사가 하나뿐이므로 "사전에 다른 품사가 있다" 는 구제가 없다.
+  교재의 뜻에 "~에", "~와" 같은 자리표시가 있으면 그 뜻은 구다.
+  예: in addition to 는 전치사구 "~에 더하여" → 동사 "더하다" 는 pos.
+      (addition·add 가 명사·동사인 것은 근거가 되지 않는다.)
+  예: combined with 는 부사구 "~와 결합되어" → "결합되다" 는 pos.
+  예: through the night 는 부사구 "밤새도록" → "밤새다" 는 pos.
 품사 문제는 correct 아니면 pos 다. close 를 쓰지 마라.
 
 [규칙 3 — 같은 뜻의 다른 표현은 인정]
