@@ -9,7 +9,7 @@
  *   supabase functions deploy judge-meaning
  *
  * 선택 환경변수:
- *   GEMINI_MODEL    사용할 모델 (기본: gemini-3.1-flash-lite)
+ *   GEMINI_MODEL    사용할 모델 (기본: gemini-2.5-flash)
  *   ALLOWED_ORIGIN  CORS 허용 도메인 (기본: * )
  */
 
@@ -17,12 +17,18 @@ const API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
 
 /* 지정 모델이 없으면 순서대로 시도한다 (모델 이름이 바뀌어도 죽지 않도록).
-   2026-08 기준: gemini-2.5-flash-lite 와 gemini-2.0-flash-lite 는 구글이 내려서
-   404 가 난다. 그대로 두면 채점할 때마다 헛호출을 두 번 하고 시작하므로 뺐다. */
+
+   2026-08 측정 기록 — 처음 보는 단어 16개(파생명사 함정 8 + 진짜 두 품사 8)로 잰 정확도:
+     gemini-2.5-flash       13/16   608ms   ← 가장 정확해서 맨 앞에 둔다
+     gemini-3.5-flash       12/16   830ms
+     gemini-3.7-flash       11/16  2617ms   (느리고 응답이 잘림)
+     gemini-3.1-flash-lite  10/16   526ms   (싸고 빠르지만 가장 부정확)
+   gemini-2.5-flash-lite 와 gemini-2.0-flash-lite 는 구글이 내려서 404 다.
+   체인 앞에 두면 채점할 때마다 헛호출을 두 번 하고 시작하므로 뺐다. */
 const MODELS = [
   Deno.env.get("GEMINI_MODEL"),
-  "gemini-3.1-flash-lite",
   "gemini-2.5-flash",
+  "gemini-3.1-flash-lite",
   "gemini-3.5-flash",
 ].filter(Boolean) as string[];
 
