@@ -110,6 +110,68 @@ correct 면 근거를(예: "동사로도 쓰여요"), pos 면 어떤 형태로 �
 
 
 
+/* ---- 사전 품사 조회 ----
+   "hibernate 가 명사로도 쓰이나" 는 판단이 아니라 사실이다.
+   그런데 긴 한국어 채점 프롬프트 안에서 함께 물으면 모델이 자주 틀린다
+   (측정: 처음 보는 단어 16개 중 13개만 정답).
+   그래서 품사만 영어로 따로, 좁게 묻는다 (같은 모델로 28/28).
+   단어의 품사는 변하지 않으므로 한 번 물어보고 기억해 둔다. */
+const POS_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    partsOfSpeech: {
+      type: "ARRAY",
+      items: { type: "STRING", enum: ["noun", "verb", "adjective", "adverb", "preposition", "conjunction", "other"] },
+    },
+    nounForm: { type: "STRING" },
+  },
+  required: ["partsOfSpeech", "nounForm"],
+};
+
+function posPrompt(w: string) {
+  return `In a standard English dictionary, what parts of speech does the headword "${w}" itself have?
+List ONLY parts of speech that "${w}" has as its own headword entry.
+Do NOT include parts of speech that belong to derived or related words.
+Example: "hibernate" is verb only — the noun is "hibernation", a different headword.
+Example: "record" is both noun and verb — the same spelling is both headwords.
+If the word is not a noun, put its noun form (a different word) in nounForm; otherwise leave nounForm empty.`;
+}
+
+const posCache = new Map<string, { pos: string[]; nounForm: string }>();
+
+async function lookupPos(word: string): Promise<{ pos: string[]; nounForm: string } | null> {
+  const key = word.toLowerCase().trim();
+  if (posCache.has(key)) return posCache.get(key)!;
+  for (const model of MODELS) {
+    for (const auth of authOrder()) {
+      let res: Response;
+      try {
+        res = await callRaw(model, posPrompt(word), POS_SCHEMA, auth);
+      } catch { continue; }
+      if (!res.ok) continue;
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      try {
+        const o = JSON.parse(text);
+        if (Array.isArray(o.partsOfSpeech) && o.partsOfSpeech.length) {
+          const out = { pos: o.partsOfSpeech as string[], nounForm: String(o.nounForm ?? "") };
+          posCache.set(key, out);
+          return out;
+        }
+      } catch { /* 다음 조합으로 */ }
+    }
+  }
+  return null;                       // 조회 실패 — 예전처럼 AI 판정에 맡긴다
+}
+
+/* 학생이 쓴 품사가 사전에 없으면 그 자리에서 오답이다.
+   있으면 뜻까지 맞는지는 아래 judge() 가 마저 본다. */
+function posHintKo(pos: string[]): string {
+  const t: Record<string, string> = { noun: "명사", verb: "동사", adjective: "형용사",
+    adverb: "부사", preposition: "전치사", conjunction: "접속사" };
+  return pos.map((p) => t[p] || p).join("·");
+}
+
 const SCHEMA = {
   type: "OBJECT",
   properties: {
@@ -131,6 +193,26 @@ function authOrder(): Auth[] {
   return API_KEY.startsWith("AQ.")
     ? ["bearer", "header", "query"]
     : ["header", "query", "bearer"];
+}
+
+/* 스키마를 바꿔 가며 부를 수 있는 최소 호출 — 품사 조회와 채점이 함께 쓴다 */
+async function callRaw(model: string, prompt: string, schema: unknown, auth: Auth, omitThinkingConfig = false) {
+  const body: Record<string, unknown> = {
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: 120,
+      responseMimeType: "application/json",
+      responseSchema: schema,
+      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
+    },
+  };
+  let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (auth === "header") headers["x-goog-api-key"] = API_KEY;
+  else if (auth === "bearer") headers["Authorization"] = `Bearer ${API_KEY}`;
+  else url += `?key=${encodeURIComponent(API_KEY)}`;
+  return await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(8000) });
 }
 
 async function callGemini(model: string, prompt: string, auth: Auth, omitThinkingConfig: boolean) {
@@ -247,10 +329,28 @@ Deno.serve(async (req) => {
   const answer = str(payload.answer, 80);
   const formMismatch = payload.form_mismatch === true || payload.form_mismatch === "true";
   const posLocked = payload.pos_locked === true || payload.pos_locked === "true";
+  // 학생이 쓴 답의 품사를 영어 사전 기준으로 옮긴 것 (브라우저가 보낸다)
+  const answerPosEn = Array.isArray(payload.answer_pos_en)
+    ? (payload.answer_pos_en as unknown[]).map((x) => String(x)).slice(0, 6)
+    : [];
 
   // 단어 채점 이외의 용도로 쓰이지 않도록 최소한의 형태 검사
   if (!word || !meaning || !answer) return json({ error: "word, meaning, answer 필요" }, 400);
   if (!/[가-힣]/.test(answer)) return json({ verdict: "wrong", reason: "한국어 뜻이 아닙니다." });
+
+  /* 품사가 어긋난 답은 먼저 사전에 물어본다.
+     그 영어 단어가 학생이 쓴 품사로 쓰이지 않으면 그 자리에서 오답이다
+     (hibernate 에 "동면" — 명사는 hibernation 이라 hibernate 의 뜻이 아니다).
+     사전에 그 품사가 있으면 뜻까지 맞는지는 아래 judge() 가 마저 본다. */
+  if (formMismatch && !posLocked && answerPosEn.length && /^[A-Za-z][A-Za-z'’-]*$/.test(word)) {
+    const dict = await lookupPos(word);
+    if (dict && !dict.pos.some((p) => answerPosEn.includes(p))) {
+      const reason = dict.nounForm && answerPosEn.includes("noun")
+        ? `그 뜻은 ${dict.nounForm} 의 뜻이에요. ${posHintKo(dict.pos)}로 써 주세요.`
+        : `${word} 는 ${posHintKo(dict.pos)}로만 쓰여요.`;
+      return json({ verdict: "pos", reason: reason.slice(0, 80), via: "dictionary", dictPos: dict.pos });
+    }
+  }
 
   const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch, posLocked));
   if ("ok" in r) return json(r.ok);

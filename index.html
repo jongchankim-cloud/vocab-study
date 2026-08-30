@@ -3207,6 +3207,16 @@ function esc(t){return String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 const aiCache=new Map();          // 같은 답을 두 번 묻지 않는다
 let aiFailStreak=0;               // 연달아 실패하면 이번 접속에서는 더 부르지 않는다
 const AI_MAX_FAILS=2;             // (배포가 안 됐거나 서버가 죽었을 때 매 문제마다 기다리지 않도록)
+/* 우리말 답의 품사를 영어 사전의 품사로 옮긴다.
+   "동면"(체언) 이면 hibernate 가 명사로도 쓰이는지 사전에 물어보면 된다.
+   국어의 용언은 영어의 동사·형용사 양쪽에 걸치므로 둘 다 넣는다. */
+const POS_TO_EN={ "체언":["noun"], "명사형":["noun"], "용언":["verb","adjective"],
+                  "부사":["adverb"], "연결":["adverb","preposition","conjunction"] };
+function answerPosEn(answer){
+  const out=new Set();
+  posSet(answer).forEach(k=>(POS_TO_EN[k]||[]).forEach(x=>out.add(x)));
+  return [...out];
+}
 async function judgeWithAI(item,answer,formMismatch){
   if(!AI_JUDGE_URL || aiFailStreak>=AI_MAX_FAILS) return null;
   const key=item.w+"|"+normKo(answer);
@@ -3224,7 +3234,8 @@ async function judgeWithAI(item,answer,formMismatch){
       body:JSON.stringify({
         word:parseWord(item.w).base, pos:itemPos(item), pos_locked:posLocked(item),
         meaning:item.m, alt:item.alt||"", exclude:parseWord(item.w).no.join(", "),
-        answer:String(answer).trim(), form_mismatch:!!formMismatch
+        answer:String(answer).trim(), form_mismatch:!!formMismatch,
+        answer_pos_en: formMismatch ? answerPosEn(answer) : []
       }),
       signal:ctl.signal
     });
