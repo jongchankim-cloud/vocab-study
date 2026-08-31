@@ -64,14 +64,14 @@ const json = (body: unknown, status = 200) =>
   });
 
 /** 학생 답안이 표준 답안과 같은 뜻인지 묻는 프롬프트 */
-function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string, formMismatch: boolean, posLocked: boolean) {
+function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string, formMismatch: boolean, posLocked: boolean, voiceBad = false) {
   return `너는 영어 단어 시험의 채점자다. 학생이 쓴 우리말 뜻이 정답인지 판단해라.
 (교재의 뜻과 글자까지 같은 답은 이미 정답 처리되어 여기 오지 않는다. 너는 교재에 없는
 표현을 판단한다.)
 
 영어 단어: ${w}${pos ? `\n지정된 품사: ${pos}${posLocked ? " — 이 품사의 뜻만 정답으로 인정한다" : ""}` : ""}
 교재의 뜻: ${meaning}${alt ? `\n추가로 인정된 답안: ${alt}` : ""}${exclude ? `\n인정하지 않는 뜻: ${exclude}` : ""}
-학생 답안: ${answer}${formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 규칙 2로 판단해라 — 그 단어가 사전에서 답안의 품사로 그 뜻을 가지면 correct, 아니면 pos 다." : ""}
+학생 답안: ${answer}${voiceBad ? "\n\n※ 학생 답안의 태(능동·피동)가 교재의 뜻과 다르다. 규칙 2-1 로 판단해라." : formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 규칙 2로 판단해라 — 그 단어가 사전에서 답안의 품사로 그 뜻을 가지면 correct, 아니면 pos 다." : ""}
 
 채점 규칙 — 번호 순서대로 적용하고, 앞 규칙에서 판정이 나면 뒤는 보지 않는다.
 
@@ -104,6 +104,19 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
   예: combined with 는 부사구 "~와 결합되어" → "결합되다" 는 pos.
   예: through the night 는 부사구 "밤새도록" → "밤새다" 는 pos.
 품사 문제는 correct 아니면 pos 다. close 를 쓰지 마라.
+
+[규칙 2-1 — 능동과 피동]
+"~하다" 와 "~되다" 는 다른 말이다. 판단 기준은 그 영어 동사가 목적어를 받는가다.
+· 타동사로만 쓰이는 동사에 피동형("~되다") 답은 pos 다. 그건 be p.p. 의 뜻이다.
+  예: devise 는 "고안하다" 뿐 → "고안되다" 는 pos (그건 be devised 다)
+  예: establish → "확립되다", perceive → "인지되다", observe → "관찰되다" 모두 pos
+· 자동사로만 쓰이는 동사에 능동형("~하다") 답은 pos 다.
+  예: consist of 는 "~로 구성되다" → "구성하다" 는 pos
+  예: cooperate 는 "협력하다"(자동사) → "협력되다" 는 pos
+· 자·타동 양쪽으로 쓰이는 동사는 어느 쪽이든 correct 다.
+  예: improve 는 "향상시키다" 도 "향상되다" 도 맞다
+  예: increase, expand, change, open, break 처럼 목적어가 주어가 될 수 있는 동사
+"~시키다"(사동) 는 능동으로 본다.
 
 [규칙 3 — 같은 뜻의 다른 표현은 인정]
 교재의 뜻과 표현이 달라도 같은 의미면 correct. 사전마다 다른 번역, 유의어,
@@ -143,8 +156,9 @@ const POS_SCHEMA = {
       items: { type: "STRING", enum: ["noun", "verb", "adjective", "adverb", "preposition", "conjunction", "other"] },
     },
     nounForm: { type: "STRING" },
+    transitivity: { type: "STRING", enum: ["transitive", "intransitive", "both", "na"] },
   },
-  required: ["partsOfSpeech", "nounForm"],
+  required: ["partsOfSpeech", "nounForm", "transitivity"],
 };
 
 function posPrompt(w: string) {
@@ -153,12 +167,21 @@ List ONLY parts of speech that "${w}" has as its own headword entry.
 Do NOT include parts of speech that belong to derived or related words.
 Example: "hibernate" is verb only — the noun is "hibernation", a different headword.
 Example: "record" is both noun and verb — the same spelling is both headwords.
-If the word is not a noun, put its noun form (a different word) in nounForm; otherwise leave nounForm empty.`;
+If the word is not a noun, put its noun form (a different word) in nounForm; otherwise leave nounForm empty.
+
+Also report transitivity of the VERB sense of "${w}":
+  "transitive"   — takes a direct object only (devise, establish, perceive)
+  "intransitive" — takes no direct object only (arrive, cooperate, consist)
+  "both"         — used either way, including ergative verbs whose object can become
+                   the subject (improve, increase, expand, change, open)
+  "na"           — "${w}" is not a verb
+Judge the headword "${w}" itself, not its derived forms.`;
 }
 
-const posCache = new Map<string, { pos: string[]; nounForm: string }>();
+type DictEntry = { pos: string[]; nounForm: string; transitivity: string };
+const posCache = new Map<string, DictEntry>();
 
-async function lookupPos(word: string): Promise<{ pos: string[]; nounForm: string } | null> {
+async function lookupPos(word: string): Promise<DictEntry | null> {
   const key = word.toLowerCase().trim();
   if (posCache.has(key)) return posCache.get(key)!;
   for (const model of MODELS) {
@@ -173,7 +196,8 @@ async function lookupPos(word: string): Promise<{ pos: string[]; nounForm: strin
       try {
         const o = JSON.parse(text);
         if (Array.isArray(o.partsOfSpeech) && o.partsOfSpeech.length) {
-          const out = { pos: o.partsOfSpeech as string[], nounForm: String(o.nounForm ?? "") };
+          const out = { pos: o.partsOfSpeech as string[], nounForm: String(o.nounForm ?? ""),
+                        transitivity: String(o.transitivity ?? "na") };
           posCache.set(key, out);
           return out;
         }
@@ -352,6 +376,12 @@ Deno.serve(async (req) => {
   const answerPosEn = Array.isArray(payload.answer_pos_en)
     ? (payload.answer_pos_en as unknown[]).map((x) => String(x)).slice(0, 6)
     : [];
+  // 답과 교재 뜻의 태 — "active" | "passive" (브라우저가 보낸다)
+  const answerVoice = str(payload.answer_voice, 10);
+  const glossVoice = Array.isArray(payload.gloss_voice)
+    ? (payload.gloss_voice as unknown[]).map((x) => String(x)).slice(0, 3)
+    : [];
+  const voiceBad = !!answerVoice && glossVoice.length > 0 && !glossVoice.includes(answerVoice);
 
   // 단어 채점 이외의 용도로 쓰이지 않도록 최소한의 형태 검사
   if (!word || !meaning || !answer) return json({ error: "word, meaning, answer 필요" }, 400);
@@ -371,7 +401,24 @@ Deno.serve(async (req) => {
     }
   }
 
-  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch, posLocked));
+  /* 태(態)가 어긋난 답은 사전의 자·타동 여부로 가린다.
+     "고안하다"(devise) 에 "고안되다" 는 be devised 의 뜻이다. devise 는 타동사뿐이라
+     오답이지만, improve 처럼 자·타동 양쪽으로 쓰이는 동사는 "향상되다" 도 맞는 말이다.
+     그래서 사전이 "both" 라고 하면 통과시키고 뜻은 아래 judge() 가 마저 본다. */
+  if (voiceBad && !posLocked && /^[A-Za-z][A-Za-z'’ -]*$/.test(word)) {
+    const dict = await lookupPos(word);
+    const tr = dict?.transitivity;
+    if (tr === "transitive" && answerVoice === "passive") {
+      return json({ verdict: "pos", via: "voice", transitivity: tr,
+        reason: `${word} 는 "~을 …하다" 로 쓰는 말이에요. ‘~되다’ 가 아니라 ‘~하다’ 로 써 주세요.`.slice(0, 80) });
+    }
+    if (tr === "intransitive" && answerVoice === "active") {
+      return json({ verdict: "pos", via: "voice", transitivity: tr,
+        reason: `${word} 는 목적어를 받지 않아요. ‘~하다’ 가 아니라 교재의 형태로 써 주세요.`.slice(0, 80) });
+    }
+  }
+
+  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch, posLocked, voiceBad));
   if ("ok" in r) return json(r.ok);
   return json({ error: "판정 실패", detail: r.err }, 502);
 });
