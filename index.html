@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-08-30-5";
+const APP_VER = "2026-08-31-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2472,6 +2472,36 @@ function posOk(answer,item){
   for(const c of cand) if(need.has(c)) return true;
   return false;
 }
+/* ---- 태(態) — 능동인가 피동인가 ----
+   "고안하다"(devise) 에 "고안되다" 라고 쓰면 그건 be devised 의 뜻이다.
+   그런데 두 낱말은 글자 하나 차이라 유사도가 0.95 로 나오고, 품사도 둘 다 용언이라
+   지금까지는 그냥 정답으로 통과했다. 태가 어긋나는 것을 여기서 잡아 낸다.
+
+   맞고 틀림은 여기서 정하지 않는다. 영어 동사가 타동사뿐이면("devise") 피동 답은
+   오답이지만, 자·타동 양쪽으로 쓰이면("improve") 피동 답도 맞는 말이기 때문이다.
+   그건 사전을 봐야 아는 사실이므로 AI 에게 넘긴다.
+
+   앞에 두 글자 이상을 요구하는 이유:
+     "타당하다"·"정당하다" 의 "당하다" 를 피동으로 잡지 않기 위해서다.
+     "~하게 되다" 의 "되다" 도 홀로 쓰인 것이므로 태를 따지지 않는다. */
+const VOICE_PASSIVE_RE=/[가-힣]{2,}(되다|돼다|당하다)$/;
+const VOICE_ACTIVE_RE =/[가-힣]{2,}(하다|시키다)$/;
+function voiceOf(raw){
+  const t=normKo(raw);
+  if(!t) return "";
+  if(VOICE_PASSIVE_RE.test(t)) return "피동";   // "당하다" 가 "하다" 로도 끝나므로 먼저 본다
+  if(VOICE_ACTIVE_RE.test(t)) return "능동";
+  return "";
+}
+/* 교재의 뜻 중 답과 태가 맞는 것이 하나라도 있으면 통과.
+   양쪽 모두 태를 알 수 있는데 서로 다를 때만 어긋난 것으로 본다. */
+function voiceBad(answer,item){
+  const av=voiceOf(answer);
+  if(!av) return false;
+  const gv=refVariants(answerText(item)).map(v=>voiceOf(v.raw)).filter(Boolean);
+  if(!gv.length) return false;
+  return !gv.includes(av);
+}
 /* 품사 이름은 선생님이 p 를 적어 둔 경우에만 쓴다.
    뜻에서 유추한 경우에는 이름 대신 모범답안의 형태를 보여 준다
    ("요약하자면" 을 "명사" 라고 부르면 오히려 헷갈린다). */
@@ -3057,6 +3087,15 @@ function gradeAnswer(answer, item, others){
     // AI 를 쓸 수 없으면 지금처럼 오답으로 둔다.
     return {verdict:"pos", posOnly:true, score:mine.score, matched:mine.matched, need:itemPos(item)};
   }
+
+  /* 태가 어긋난 답 — "고안하다" 에 "고안되다".
+     품사는 둘 다 용언이라 위 검사를 그냥 통과하고, 글자도 거의 같아 유사도가 높다.
+     맞는지 틀리는지는 그 영어 동사가 타동사뿐인지에 달렸으므로 AI 에게 물어본다.
+     (devise 는 타동사뿐이라 오답, improve 는 자동사로도 쓰여 정답) */
+  if(mine.score>=GRAY && mine.score<1 && !posLocked(item) && voiceBad(answer,item))
+    return {verdict:"pos", posOnly:true, voiceBad:true,
+            score:mine.score, matched:mine.matched, need:itemPos(item)};
+
   let bestOther=0, otherItem=null;
   (others||[]).forEach(o=>{
     if(o.w===item.w || o.m===item.m) return;
@@ -3217,6 +3256,14 @@ function answerPosEn(answer){
   posSet(answer).forEach(k=>(POS_TO_EN[k]||[]).forEach(x=>out.add(x)));
   return [...out];
 }
+/* 답과 교재 뜻의 태를 영어로 옮긴다. 사전에 타동사뿐이라고 나오면
+   피동 답("고안되다")은 be devised 의 뜻이므로 오답이다. */
+const VOICE_EN={ "능동":"active", "피동":"passive" };
+function voiceEn(raw){ return VOICE_EN[voiceOf(raw)] || ""; }
+function glossVoiceEn(item){
+  const vs=refVariants(answerText(item)).map(v=>voiceOf(v.raw)).filter(Boolean);
+  return [...new Set(vs.map(v=>VOICE_EN[v]))].filter(Boolean);
+}
 async function judgeWithAI(item,answer,formMismatch){
   if(!AI_JUDGE_URL || aiFailStreak>=AI_MAX_FAILS) return null;
   const key=item.w+"|"+normKo(answer);
@@ -3237,7 +3284,8 @@ async function judgeWithAI(item,answer,formMismatch){
         word:parseWord(item.w).base, pos:itemPos(item), pos_locked:posLocked(item),
         meaning:item.m, alt:item.alt||"", exclude:parseWord(item.w).no.join(", "),
         answer:String(answer).trim(), form_mismatch:!!formMismatch,
-        answer_pos_en: formMismatch ? answerPosEn(answer) : []
+        answer_pos_en: formMismatch ? answerPosEn(answer) : [],
+        answer_voice: voiceEn(answer), gloss_voice: glossVoiceEn(item)
       }),
       signal:ctl.signal
     });
@@ -3331,10 +3379,17 @@ function renderVerdict(res,it,raw){
       ? (res.matched && res.matched!==it.m
           ? `조사 <b>‘${esc(res.particle)}’</b>를 빼고 <b>‘${esc(res.matched)}’</b>라고 써 주세요.`
           : `조사 <b>‘${esc(res.particle)}’</b>를 빼고 써 주세요. 뜻만 적으면 됩니다.`)
+      : res.voiceBad
+      ? `<b>${esc(it.w)}</b> 는 <b>‘${esc(sample)}’</b>예요. ${
+          voiceOf(raw)==="피동"
+            ? "당하는 뜻(<b>~되다</b>)이 아니라 <b>~하다</b>로 써 주세요."
+            : "<b>~되다</b>처럼 당하는 뜻으로 써 주세요."}`
       : lbl
       ? `<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. ${posHint(res.need)}`
       : `<b>‘${esc(sample)}’</b> 처럼 같은 형태로 써야 해요.`;
-    feedback("no", res.particle ? "❌ 조사를 빼 주세요" : (lbl ? "❌ 품사가 달라요" : "❌ 형태가 달라요"),
+    feedback("no", res.particle ? "❌ 조사를 빼 주세요"
+                 : res.voiceBad ? "❌ 능동·피동이 달라요"
+                 : (lbl ? "❌ 품사가 달라요" : "❌ 형태가 달라요"),
       `${line}<br>내 답: <b>${esc(raw.trim())}</b><br>${model}${aiLine}`);
     markWrong(it);
     return;
