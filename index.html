@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-08-31-1";
+const APP_VER = "2026-08-31-2";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2137,11 +2137,19 @@ function startFlash(){
 function renderFlash(){
   const it=state.pool[state.idx];
   if(!it)return;
+  /* 카드를 넘길 때는 뒤집기 애니메이션을 끄고 즉시 앞면으로 되돌린다.
+     그냥 flipped 를 떼면 0.5 초 동안 카드가 돌아 나가는데, 그 사이에
+     뒷면에 적힌 다음 단어의 뜻이 학생에게 그대로 보인다.
+     transition 을 끄고 → 앞면으로 되돌리고 → 그 다음에 내용을 채운다. */
+  const inner=$("fcInner");
+  inner.style.transition="none";
+  state.flipped=false;
+  inner.classList.remove("flipped");
+  void inner.offsetWidth;                  // 여기서 회전이 즉시 반영된다
   $("fcWord").textContent=it.w;
   $("fcPos").textContent=it.p||"";
-  $("fcMean").textContent=it.m;
-  state.flipped=false;
-  $("fcInner").classList.remove("flipped");
+  $("fcMean").textContent=it.m;            // 이 시점엔 뒷면이 이미 뒤로 돌아가 있다
+  requestAnimationFrame(()=>{ inner.style.transition=""; });   // 손으로 뒤집을 때는 다시 애니메이션
   const pct=((state.idx+1)/state.pool.length)*100;
   $("flashBar").style.width=pct+"%";
   $("flashCounter").textContent=`${state.idx+1} / ${state.pool.length}`;
