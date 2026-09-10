@@ -2510,6 +2510,43 @@ function voiceBad(answer,item){
   if(!gv.length) return false;
   return !gv.includes(av);
 }
+/* ---- 형(形) — 관형형인가 서술형인가 ----
+   "동사가 없는"(verbless, 형용사) 에 "동사가 없다" 라고 쓰면 그건 서술형이다.
+   둘은 글자 하나 차이라 유사도가 0.95 로 나오고, 품사 분류도 둘 다 "용언" 이라
+   지금까지는 그냥 정답으로 통과했다. 여기서 관형형과 서술형을 갈라 놓는다.
+     관형형(~한 · ~인 · ~는)  → 영어의 형용사 자리
+     서술형(~다)              → 영어의 동사 자리
+   맞고 틀림은 여기서 정하지 않는다. 그 영어 단어가 형용사로도 동사로도 쓰이면
+   어느 쪽이든 맞기 때문이다. 그건 사전을 봐야 아는 사실이므로 AI 에게 넘긴다.
+
+   "은·는" 은 조사일 수도 있어("한편으로는") 그것만으로는 관형형으로 보지 않는다.
+   상대편이 같은 어간의 서술형일 때만("없는" ↔ "없다") 관형형으로 본다. */
+const ADN_SURE_END=["적인","하는","되는","시키는","당하는","스러운","로운","다운","한","운"];
+function formOf(raw,counterpart){
+  const t=normKo(raw);
+  if(!t) return "";
+  if(/다$/.test(t)) return "서술";
+  if(/의$/.test(t) && t.length>=3) return "관형";      // "잠시 동안의"·"~ 미만의" — 관형격도 꾸며 주는 형태다
+  if(!posSet(raw).has("용언")) return "";              // 체언·부사·연결이면 형을 따지지 않는다
+  if(ADN_SURE_END.some(e=>t.length>e.length && t.endsWith(e))) return "관형";
+  if(/[은는]$/.test(t) && counterpart){
+    const c=normKo(counterpart);
+    if(/다$/.test(c) && c.slice(0,-1)===t.slice(0,-1)) return "관형";
+  }
+  return "";
+}
+/* 형을 알 수 있는 뜻만 놓고 본다. 그중 답과 형이 같은 것이 하나라도 있으면 통과,
+   전부 다르면 어긋난 것이다. 형을 알 수 없는 뜻("~에 더하여" 같은 연결형)은 세지 않는다. */
+function formBad(answer,item){
+  let known=0;
+  for(const v of refVariants(answerText(item))){
+    const af=formOf(answer,v.raw), gf=formOf(v.raw,answer);
+    if(!af || !gf) continue;
+    known++;
+    if(af===gf) return false;
+  }
+  return known>0;
+}
 /* 품사 이름은 선생님이 p 를 적어 둔 경우에만 쓴다.
    뜻에서 유추한 경우에는 이름 대신 모범답안의 형태를 보여 준다
    ("요약하자면" 을 "명사" 라고 부르면 오히려 헷갈린다). */
@@ -3104,6 +3141,14 @@ function gradeAnswer(answer, item, others){
     return {verdict:"pos", posOnly:true, voiceBad:true,
             score:mine.score, matched:mine.matched, need:itemPos(item)};
 
+  /* 형이 어긋난 답 — "동사가 없는" 에 "동사가 없다", "간과하다" 에 "간과하는".
+     관형형은 형용사 자리, 서술형은 동사 자리다. 그 영어 단어가 두 품사를 다 가지면
+     어느 쪽이든 맞으므로 사전을 아는 AI 에게 물어본다.
+     (verbless 는 형용사뿐이라 "동사가 없다" 는 오답) */
+  if(mine.score>=GRAY && mine.score<1 && !posLocked(item) && formBad(answer,item))
+    return {verdict:"pos", posOnly:true, formBad:true,
+            score:mine.score, matched:mine.matched, need:itemPos(item)};
+
   let bestOther=0, otherItem=null;
   (others||[]).forEach(o=>{
     if(o.w===item.w || o.m===item.m) return;
@@ -3272,6 +3317,18 @@ function glossVoiceEn(item){
   const vs=refVariants(answerText(item)).map(v=>voiceOf(v.raw)).filter(Boolean);
   return [...new Set(vs.map(v=>VOICE_EN[v]))].filter(Boolean);
 }
+/* 답과 교재 뜻의 형(관형형·서술형)을 영어로 옮긴다.
+   서술형 답에 사전이 "형용사뿐" 이라고 하면 그 자리에서 오답이다 (verbless ← 동사가 없다). */
+const FORM_EN={ "관형":"adnominal", "서술":"predicate" };
+function formEn(answer,item){
+  const refs=refVariants(answerText(item));
+  for(const v of refs){ const f=formOf(answer,v.raw); if(f) return FORM_EN[f]; }
+  return FORM_EN[formOf(answer)] || "";
+}
+function glossFormEn(item,answer){
+  const fs=refVariants(answerText(item)).map(v=>formOf(v.raw,answer)).filter(Boolean);
+  return [...new Set(fs.map(f=>FORM_EN[f]))].filter(Boolean);
+}
 async function judgeWithAI(item,answer,formMismatch){
   if(!AI_JUDGE_URL || aiFailStreak>=AI_MAX_FAILS) return null;
   const key=item.w+"|"+normKo(answer);
@@ -3293,7 +3350,8 @@ async function judgeWithAI(item,answer,formMismatch){
         meaning:item.m, alt:item.alt||"", exclude:parseWord(item.w).no.join(", "),
         answer:String(answer).trim(), form_mismatch:!!formMismatch,
         answer_pos_en: formMismatch ? answerPosEn(answer) : [],
-        answer_voice: voiceEn(answer), gloss_voice: glossVoiceEn(item)
+        answer_voice: voiceEn(answer), gloss_voice: glossVoiceEn(item),
+        answer_form: formEn(answer,item), gloss_form: glossFormEn(item,answer)
       }),
       signal:ctl.signal
     });
@@ -3392,11 +3450,17 @@ function renderVerdict(res,it,raw){
           voiceOf(raw)==="피동"
             ? "당하는 뜻(<b>~되다</b>)이 아니라 <b>~하다</b>로 써 주세요."
             : "<b>~되다</b>처럼 당하는 뜻으로 써 주세요."}`
+      : res.formBad
+      ? `<b>${esc(it.w)}</b> 는 <b>‘${esc(sample)}’</b>예요. ${
+          formEn(raw,it)==="predicate"
+            ? "‘~다’로 끝나는 서술형이 아니라 <b>‘~한 / ~인 / ~는’</b>처럼 꾸며 주는 형태로 써 주세요."
+            : "꾸며 주는 형태가 아니라 <b>‘~다’</b>로 끝나는 서술형으로 써 주세요."}`
       : lbl
       ? `<b>${esc(it.w)}</b> 는 <b>${esc(lbl)}</b>예요. ${posHint(res.need)}`
       : `<b>‘${esc(sample)}’</b> 처럼 같은 형태로 써야 해요.`;
     feedback("no", res.particle ? "❌ 조사를 빼 주세요"
                  : res.voiceBad ? "❌ 능동·피동이 달라요"
+                 : res.formBad ? "❌ 형태가 달라요"
                  : (lbl ? "❌ 품사가 달라요" : "❌ 형태가 달라요"),
       `${line}<br>내 답: <b>${esc(raw.trim())}</b><br>${model}${aiLine}`);
     markWrong(it);

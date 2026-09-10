@@ -64,14 +64,14 @@ const json = (body: unknown, status = 200) =>
   });
 
 /** 학생 답안이 표준 답안과 같은 뜻인지 묻는 프롬프트 */
-function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string, formMismatch: boolean, posLocked: boolean, voiceBad = false) {
+function buildPrompt(w: string, pos: string, meaning: string, alt: string, answer: string, exclude: string, formMismatch: boolean, posLocked: boolean, voiceBad = false, formBad = false) {
   return `너는 영어 단어 시험의 채점자다. 학생이 쓴 우리말 뜻이 정답인지 판단해라.
 (교재의 뜻과 글자까지 같은 답은 이미 정답 처리되어 여기 오지 않는다. 너는 교재에 없는
 표현을 판단한다.)
 
 영어 단어: ${w}${pos ? `\n지정된 품사: ${pos}${posLocked ? " — 이 품사의 뜻만 정답으로 인정한다" : ""}` : ""}
 교재의 뜻: ${meaning}${alt ? `\n추가로 인정된 답안: ${alt}` : ""}${exclude ? `\n인정하지 않는 뜻: ${exclude}` : ""}
-학생 답안: ${answer}${voiceBad ? "\n\n※ 학생 답안의 태(능동·피동)가 교재의 뜻과 다르다. 규칙 2-1 로 판단해라." : formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 규칙 2로 판단해라 — 그 단어가 사전에서 답안의 품사로 그 뜻을 가지면 correct, 아니면 pos 다." : ""}
+학생 답안: ${answer}${voiceBad ? "\n\n※ 학생 답안의 태(능동·피동)가 교재의 뜻과 다르다. 규칙 2-1 로 판단해라." : formBad ? "\n\n※ 학생 답안의 형(관형형·서술형)이 교재의 뜻과 다르다. 규칙 2-2 로 판단해라." : formMismatch ? "\n\n※ 학생 답안의 품사·형태가 교재의 뜻과 다르다. 규칙 2로 판단해라 — 그 단어가 사전에서 답안의 품사로 그 뜻을 가지면 correct, 아니면 pos 다." : ""}
 
 채점 규칙 — 번호 순서대로 적용하고, 앞 규칙에서 판정이 나면 뒤는 보지 않는다.
 
@@ -117,6 +117,18 @@ function buildPrompt(w: string, pos: string, meaning: string, alt: string, answe
   예: improve 는 "향상시키다" 도 "향상되다" 도 맞다
   예: increase, expand, change, open, break 처럼 목적어가 주어가 될 수 있는 동사
 "~시키다"(사동) 는 능동으로 본다.
+
+[규칙 2-2 — 관형형과 서술형]
+"~한 · ~인 · ~는 · ~의"(관형형) 은 형용사 자리, "~다"(서술형) 는 동사 자리다.
+· 형용사로만 쓰이는 단어에 서술형 답은 pos 다.
+  예: verbless 는 형용사 "동사가 없는" → "동사가 없다" 는 pos
+  예: vast → "방대하다", potential → "잠재적이다", brief → "짧다" 모두 pos
+· 동사로만 쓰이는 단어에 관형형 답은 pos 다.
+  예: disappear 는 동사 "사라지다" → "사라지는" 은 pos
+  예: overlook → "간과하는", devise → "고안하는" 모두 pos
+· 형용사와 동사 양쪽으로 쓰이는 단어는 어느 쪽이든 correct 다.
+  예: open — "열린" 도 "열다" 도 맞다. clean, dry, empty, complete 도 같다.
+· 구(句)는 교재의 형을 따른다. 교재가 관형형이면 관형형만 맞다.
 
 [규칙 3 — 같은 뜻의 다른 표현은 인정]
 교재의 뜻과 표현이 달라도 같은 의미면 correct. 사전마다 다른 번역, 유의어,
@@ -382,6 +394,12 @@ Deno.serve(async (req) => {
     ? (payload.gloss_voice as unknown[]).map((x) => String(x)).slice(0, 3)
     : [];
   const voiceBad = !!answerVoice && glossVoice.length > 0 && !glossVoice.includes(answerVoice);
+  // 답과 교재 뜻의 형 — "adnominal"(관형형 ~한/~인/~는) | "predicate"(서술형 ~다)
+  const answerForm = str(payload.answer_form, 10);
+  const glossForm = Array.isArray(payload.gloss_form)
+    ? (payload.gloss_form as unknown[]).map((x) => String(x)).slice(0, 3)
+    : [];
+  const formBad = !!answerForm && glossForm.length > 0 && !glossForm.includes(answerForm);
 
   // 단어 채점 이외의 용도로 쓰이지 않도록 최소한의 형태 검사
   if (!word || !meaning || !answer) return json({ error: "word, meaning, answer 필요" }, 400);
@@ -418,7 +436,27 @@ Deno.serve(async (req) => {
     }
   }
 
-  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch, posLocked, voiceBad));
+  /* 형(形)이 어긋난 답은 사전의 품사로 가린다.
+     관형형(~한·~인·~는)은 형용사 자리, 서술형(~다)은 동사 자리다.
+     "동사가 없는"(verbless) 에 "동사가 없다" — verbless 는 형용사뿐이라 오답.
+     "사라지다"(disappear) 에 "사라지는" — disappear 는 동사뿐이라 오답.
+     두 품사를 다 가지는 단어면 통과시키고 뜻은 아래 judge() 가 마저 본다. */
+  if (formBad && !posLocked && /^[A-Za-z][A-Za-z'’ -]*$/.test(word)) {
+    const dict = await lookupPos(word);
+    if (dict) {
+      const sample = meaning.split(/[,;]/)[0].replace(/\[[^\]]*\]/g, "").trim();
+      if (answerForm === "predicate" && !dict.pos.includes("verb")) {
+        return json({ verdict: "pos", via: "form", dictPos: dict.pos,
+          reason: `${word} 는 ${posHintKo(dict.pos)}예요. ‘${sample}’ 처럼 꾸며 주는 형태로 써 주세요.`.slice(0, 80) });
+      }
+      if (answerForm === "adnominal" && !dict.pos.includes("adjective")) {
+        return json({ verdict: "pos", via: "form", dictPos: dict.pos,
+          reason: `${word} 는 ${posHintKo(dict.pos)}예요. ‘${sample}’ 처럼 ‘~다’ 로 써 주세요.`.slice(0, 80) });
+      }
+    }
+  }
+
+  const r = await judge(buildPrompt(word, pos, meaning, alt, answer, exclude, formMismatch, posLocked, voiceBad, formBad));
   if ("ok" in r) return json(r.ok);
   return json({ error: "판정 실패", detail: r.err }, 502);
 });
