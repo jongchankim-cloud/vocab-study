@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-09-20-3";
+const APP_VER = "2026-09-20-4";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -1356,7 +1356,7 @@ const VOCAB_DATA = {
         {w:"return(n, 돌아옴x)", m:"보상[이득 / 대가]"},
         {w:"derive ~ out of ...", m:"...에서 ~을 얻다[이끌어내다]"},
         {w:"courageous", m:"용기 있는, 용감한"},
-        {w:"move(n)", m:"행보[결단 / 조치]"},
+        {w:"move(n, 움직임x)", m:"행보[결단 / 조치]"},
         {w:"overcautious", m:"지나치게 조심스러운, 과도하게 신중한"},
         {w:"attain", m:"도달하다[성취하다]"},
         {w:"potential", m:"잠재력[가능성]"},
