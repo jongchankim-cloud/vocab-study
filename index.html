@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-09-09-1";
+const APP_VER = "2026-09-20-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -4045,8 +4045,11 @@ async function doLogin(){
   // header identity
   const who=$("whoami");
   who.classList.remove("hidden");
-  who.innerHTML=`<span class="sync-dot ok"></span>${student.name} 님 <span class="logout">로그아웃</span>`;
-  who.querySelector(".logout").onclick=logout;
+  const _al=document.querySelector(".auto-login-loading"); if(_al) _al.remove();  // '입장 중…' 표시 제거
+  who.innerHTML=`<span class="sync-dot ok"></span>${student.name} 님 <span class="logout">로그아웃</span> · <span class="logout" style="color:var(--accent)">📊 점수 확인</span>`;
+  const _lo=who.querySelectorAll(".logout");
+  _lo[0].onclick=logout;
+  _lo[1].onclick=goBack;
 
   btn.disabled=false; btn.textContent="입장하기";
   buildHome();
@@ -4057,6 +4060,7 @@ function logout(){
   student.key=null; student.name=null;
   $("whoami").classList.add("hidden");
   $("loginName").value=""; $("loginPhone").value="";
+  localStorage.removeItem("vocab_auth");   // 점수 사이트에서 넘어온 자동 로그인 정보도 지운다
   show("login");
 }
 async function loadProgress(){
@@ -4137,9 +4141,39 @@ $("loginName").addEventListener("keydown",e=>{ if(e.key==="Enter")$("loginPhone"
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function dedupe(arr){const seen=new Set();return arr.filter(x=>{const k=x.group+"|"+x.day+"|"+x.w;if(seen.has(k))return false;seen.add(k);return true;});}
 
+/* ---------- 점수 사이트 연동 ---------- */
+// 점수 확인 사이트로 돌아간다. 같은 도메인이라 절대경로로 고정한다
+function goBack(){ window.location.href="/score-system/"; }
+
+// 점수 사이트에서 이름·PIN 을 vocab_auth 로 넘겨 주면 자동 로그인한다.
+// 같은 origin(jongchankim-cloud.github.io)이라 localStorage 가 공유된다.
+function tryAutoLogin(){
+  try{
+    const stored=localStorage.getItem("vocab_auth");
+    if(stored){
+      const auth=JSON.parse(stored);
+      if(auth.name && auth.pin){
+        const sl=document.getElementById("screen-login"); if(sl) sl.style.display="none";
+        const loadingDiv=document.createElement("div");
+        loadingDiv.className="auto-login-loading";
+        loadingDiv.style.cssText="text-align:center;padding:60px 20px;color:#5a6b7b;font-size:16px;";
+        loadingDiv.innerHTML=`<div style="margin-bottom:20px;">입장 중…</div>`;
+        (document.querySelector(".wrap")||document.body).appendChild(loadingDiv);
+        $("loginName").value=auth.name;
+        $("loginPhone").value=auth.pin;
+        setTimeout(doLogin,300);
+        return true;
+      }
+    }
+  }catch(e){ console.warn("Auto login 실패",e); }
+  return false;
+}
+
 /* ---------- init ---------- */
-show("login");
-$("loginName").focus();
+if(!tryAutoLogin()){
+  show("login");
+  $("loginName").focus();
+}
 </script>
 </body>
 </html>
