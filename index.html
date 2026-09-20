@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-09-20-2";
+const APP_VER = "2026-09-20-3";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -994,7 +994,7 @@ const VOCAB_DATA = {
         {w:"anaerobic respiration", m:"무산소 호흡"},
         {w:"generate", m:"만들어내다[발생시키다]"},
         {w:"glucose", m:"포도당"},
-        {w:"access(접근하다x)", m:"이용하다[꺼내 쓰다]"},
+        {w:"access", m:"이용하다[꺼내 쓰다]"},
         {w:"backup system", m:"예비 체계, 비상 대체 시스템"},
         {w:"turbo boost", m:"순간적인 출력 증가, 폭발적인 힘"},
         {w:"inefficient", m:"비효율적인"},
@@ -1281,7 +1281,7 @@ const VOCAB_DATA = {
         {w:"work", m:"통하다[적용되다 / 효과가 있다]"},
         {w:"it takes ~ to ...", m:"...하는 데 ~이 들다[필요하다]"},
         {w:"adequately", m:"적절하게[충분히]"},
-        {w:"elaborate(정교한x)", m:"상세히 설명하다, 자세히 풀어내다"},
+        {w:"elaborate(v)", m:"상세히 설명하다, 자세히 풀어내다"},
         {w:"in speech", m:"말하기에서[구어에서]"},
         {w:"come equipped with", m:"~을 갖추고 있다, 기본으로 탑재되어 있다"},
         {w:"replay button", m:"되감기[다시 듣기] 버튼"},
@@ -1308,7 +1308,7 @@ const VOCAB_DATA = {
         {w:"on the other hand", m:"반면에[다른 한편으로는]"},
         {w:"distracted", m:"주의가 산만한, 집중력이 흐트러진"},
         {w:"spend time on", m:"~에 시간을 쓰다[보내다]"},
-        {w:"support(지지하다x, 부양하다x)", m:"뒷받침하다[돕다]"},
+        {w:"support", m:"뒷받침하다[돕다]"},
         {w:"attention", m:"주의력[집중력]"},
         {w:"right balance", m:"적절한 균형[조화]"},
         {w:"excessive", m:"지나친[과도한]"},
@@ -1353,10 +1353,10 @@ const VOCAB_DATA = {
         {w:"tread", m:"(발을) 내딛다[걷다]"},
         {w:"take", m:"(특정한 길을) 택하다[들어서다]"},
         {w:"road less travelled", m:"남들이 잘 가지 않은 길"},
-        {w:"return(돌아오다x, 반납하다x)", m:"보상[이득 / 대가]"},
+        {w:"return(n, 돌아옴x)", m:"보상[이득 / 대가]"},
         {w:"derive ~ out of ...", m:"...에서 ~을 얻다[이끌어내다]"},
         {w:"courageous", m:"용기 있는, 용감한"},
-        {w:"move(움직임x)", m:"행보[결단 / 조치]"},
+        {w:"move(n)", m:"행보[결단 / 조치]"},
         {w:"overcautious", m:"지나치게 조심스러운, 과도하게 신중한"},
         {w:"attain", m:"도달하다[성취하다]"},
         {w:"potential", m:"잠재력[가능성]"},
