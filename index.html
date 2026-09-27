@@ -545,7 +545,8 @@ const AI_SHARE_ACCEPTED = true;  // AI가 인정한 답을 모든 학생에게 �
    - 비어 있는 그룹은 홈 화면에서 "준비 중"으로 표시됩니다.
    ===================================================================== */
 
-const GROUPS = ["용산 고1 2026 2학기 중간고사", "용산 고2 2026 2학기 중간고사"];
+const GROUPS = ["용산 고1 2026 2학기 중간고사", "용산 고2 2026 2학기 중간고사",
+                "용산 고1 2026 2학기 기말고사", "용산 고2 2026 2학기 기말고사"];
 
 const VOCAB_DATA = {
   "용산 고1 2026 2학기 중간고사": {
@@ -3014,6 +3015,16 @@ const VOCAB_DATA = {
         {w:"for the purpose of", m:"~을 목적으로[위해]"}
       ]
     }
+  },
+  "용산 고1 2026 2학기 기말고사": {
+    tag: "고1 · 2026 2학기",
+    unit: "챕터",
+    days: {}
+  },
+  "용산 고2 2026 2학기 기말고사": {
+    tag: "고2 · 2026 2학기",
+    unit: "챕터",
+    days: {}
   }
 };
 
@@ -3092,14 +3103,18 @@ function buildHome(){
   const grid=$("gradeGrid"); grid.innerHTML="";
   GROUPS.forEach(g=>{
     const n=countGroup(g);
+    const np=(CONTENT.passages[g]||[]).length;
+    const ng=Object.values(gramCounts(g)).reduce((a,b)=>a+b,0);
+    const any=n+np+ng>0;              // 단어 · 지문 · 어법 중 하나라도 있으면 들어갈 수 있다
     const card=document.createElement("button");
-    card.className="grade-card"+(n===0?" empty":"");
+    card.className="grade-card"+(any?"":" empty");
     const dayCount=Object.keys(VOCAB_DATA[g].days).length;
     const tag=(VOCAB_DATA[g].tag)||"단어장";
+    const meta=[n?`단어 ${n}개 · ${dayCount}개 ${esc(unitName(g))}`:"", np?`지문 ${np}개`:"", ng?`어법 ${ng}문제`:""].filter(Boolean);
     card.innerHTML=`<span class="g-eyebrow">${esc(tag)}</span>
       <span class="g-name">${esc(g)}</span>
-      <span class="g-meta">${n>0?`단어 ${n}개 · ${dayCount}개 ${esc(unitName(g))}`:"단어 준비 중"}</span>`;
-    if(n>0) card.onclick=()=>openDayScreen(g);
+      <span class="g-meta">${meta.length?meta.join(" · "):"준비 중"}</span>`;
+    if(any) card.onclick=()=>{ if(!n && subject==="vocab") subject=np?"passage":"grammar"; openDayScreen(g); };
     grid.appendChild(card);
   });
 }
@@ -3120,6 +3135,10 @@ function openDayScreen(group){
   $("daySub").innerHTML=`전체로 한 번에, 또는 <span id="unitWord">${esc(unitName(group))}</span>를 <b>여러 개 골라서</b> 함께 공부·시험 볼 수 있어요.`;
   const grid=$("dayGrid"); grid.innerHTML="";
   const total=countGroup(group);
+  if(!total){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="e-ic">📖</div>아직 준비된 단어가 없어요.</div>`;
+    show("day"); return;
+  }
 
   const all=document.createElement("button");
   all.className="day-chip all";
