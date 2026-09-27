@@ -137,11 +137,11 @@
   <section id="screen-gate">
     <div class="gate-wrap">
       <h1 class="title" style="text-align:center">관리자 확인</h1>
-      <p class="subtitle" style="text-align:center">관리자 번호를 입력하세요.</p>
+      <p class="subtitle" style="text-align:center">성적 사이트 관리자 비밀번호로 들어갑니다.</p>
       <div class="panel">
         <div class="fld">
-          <span style="text-align:center">관리자 번호</span>
-          <input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off">
+          <span style="text-align:center">관리자 비밀번호</span>
+          <input id="pin" type="password" placeholder="••••" autocomplete="off">
         </div>
         <button class="go" id="gateBtn">들어가기</button>
         <p class="gate-msg" id="gateMsg"></p>
@@ -283,7 +283,6 @@
 /* ===== Supabase ===== */
 const SUPABASE_URL = "https://uxzsleryzpjaoqciyqvs.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV4enNsZXJ5enBqYW9xY2l5cXZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDc4MDIsImV4cCI6MjA5NzA4MzgwMn0.mt91HfP2DV4Q9gZ_0Ts-B2P6fB3PmQlLJK2XcJeKzL4";
-const ADMIN_PIN = "1357";
 let sb=null;
 try{ sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON); }catch(e){ console.warn(e); }
 
@@ -304,11 +303,39 @@ const ALIAS_AI_OWNER="__ALIAS_AI__"; // AI가 인정해 공유된 답안 가상 
 const GLOBAL=new Set();            // 전체 인정된 word_id
 let AI_ROWS=[];                    // AI가 인정한 공유 답안 목록
 
-/* ---- gate ---- */
-function tryGate(){
+/* ---- gate ----
+   성적 사이트 관리자 비밀번호를 서버(admin_login)가 성적 사이트에 확인하고,
+   맞으면 12시간짜리 통행증을 준다. 학생 기록은 이 통행증으로만 읽고 고친다.
+   비밀번호와 통행증은 메모리에만 두고 저장하지 않는다. */
+let adminPw="", adminToken="";
+async function tryGate(){
   const v=$("pin").value.trim();
-  if(v===ADMIN_PIN){ $("gateMsg").textContent=""; enter(); }
-  else{ $("gateMsg").textContent="번호가 올바르지 않습니다."; $("pin").select(); }
+  if(!v){ $("gateMsg").textContent="비밀번호를 입력해 주세요."; return; }
+  const btn=$("gateBtn"); btn.disabled=true; $("gateMsg").textContent="확인 중…";
+  try{
+    const {data,error}=await sb.rpc("admin_login",{p_pw:v});
+    if(error)throw error;
+    if(!data){ $("gateMsg").textContent="비밀번호가 올바르지 않습니다."; $("pin").select(); }
+    else{ adminPw=v; adminToken=data; $("gateMsg").textContent=""; await enter(); }
+  }catch(e){
+    console.warn(e);
+    $("gateMsg").textContent="확인하지 못했어요. 성적 사이트가 응답하지 않을 수 있어요 — 잠시 후 다시 시도해 주세요.";
+  }
+  btn.disabled=false;
+}
+/* 관리자 창구 호출 — 통행증이 만료됐으면 잠금 화면으로 돌아간다 */
+async function adminRpc(fn,args={}){
+  const {data,error}=await sb.rpc(fn,{p_token:adminToken, ...args});
+  if(error){
+    if(/admin_auth/.test(error.message||"")){ lockAdmin("다시 로그인해 주세요 (12시간이 지났어요)."); }
+    throw error;
+  }
+  return data;
+}
+function lockAdmin(msg){
+  if(adminToken && sb) sb.rpc("admin_logout",{p_token:adminToken}).then(()=>{},()=>{});
+  adminPw=""; adminToken=""; ssPw="";
+  $("pin").value=""; $("gateMsg").textContent=msg||""; show("gate"); $("pin").focus();
 }
 $("gateBtn").onclick=tryGate;
 $("pin").addEventListener("keydown",e=>{if(e.key==="Enter")tryGate();});
@@ -316,7 +343,7 @@ $("pin").addEventListener("keydown",e=>{if(e.key==="Enter")tryGate();});
 async function enter(){
   $("tools").innerHTML='<button id="rosterBtn">👥 명단 관리</button><button id="logout">잠그기</button>';
   $("rosterBtn").onclick=openRoster;
-  $("logout").onclick=()=>{ $("pin").value=""; show("gate"); $("pin").focus(); };
+  $("logout").onclick=()=>lockAdmin("");
   await loadAll();
   show("list");
 }
@@ -325,11 +352,7 @@ async function enter(){
 async function loadAll(){
   if(!sb){ alert("Supabase 연결에 실패했어요."); return; }
   try{
-    const {data,error}=await sb.from("progress")
-      .select("student_key,student_name,kind,word_id,word,grp,day,updated_at")
-      .order("updated_at",{ascending:false});
-    if(error)throw error;
-    ALL=data||[];
+    ALL=await adminRpc("admin_progress_all") || [];
     groupStudents();
     renderStats();
     renderList();
@@ -397,7 +420,7 @@ function renderList(){
     const favP = s.fav.length ? `<span class="pill fav">⭐ ${s.fav.length}</span>` : `<span class="pill zero">⭐ 0</span>`;
     const wrP  = s.wrong.length ? `<span class="pill wrong">🔁 ${s.wrong.length}</span>` : `<span class="pill zero">🔁 0</span>`;
     const alP = s.alias.length ? `<span class="pill" style="background:#e6f0ff;color:#2b5fa8">✍️ ${s.alias.length}</span>` : "";
-    b.innerHTML=`<span class="nm">${esc(s.name)}</span><span class="kk">${esc(s.key)}</span>
+    b.innerHTML=`<span class="nm">${esc(s.name)}</span><span class="kk">${esc(shortKey(s.key))}</span>
       <span class="pills">${favP}${wrP}${alP}</span><span class="chev">›</span>`;
     b.onclick=()=>openDetail(s);
     box.appendChild(b);
@@ -490,38 +513,15 @@ $("aiCheck").onclick=async()=>{
    공유본만 지우면 처음 그 답을 쓴 학생에게는 계속 정답 처리된다. */
 async function deleteAiAlias(wordId){
   if(!sb)return false;
-  try{
-    let r=await sb.from("progress").delete()
-      .eq("student_key",ALIAS_AI_OWNER).eq("kind","alias").eq("word_id",wordId);
-    if(r.error)throw r.error;
-    r=await sb.from("progress").delete()
-      .eq("kind","alias_ai").eq("word_id",wordId);        // 모든 학생
-    if(r.error)throw r.error;
-    return true;
-  }catch(err){ console.warn(err); return false; }
+  try{ await adminRpc("admin_delete_ai_alias",{p_word_id:wordId}); return true; }
+  catch(err){ console.warn(err); return false; }
 }
 /* 채점 규칙을 바꾼 뒤에는 예전 규칙으로 인정된 답이 남아 오답이 정답 처리될 수 있다.
    전부 비우면 다음 입력부터 새 규칙으로 다시 판정한다. */
 async function purgeAiAliases(){
   if(!sb)return false;
-  try{
-    let r=await sb.from("progress").delete()
-      .eq("student_key",ALIAS_AI_OWNER).eq("kind","alias");
-    if(r.error)throw r.error;
-    r=await sb.from("progress").delete().eq("kind","alias_ai");
-    if(r.error)throw r.error;
-    return true;
-  }catch(err){ console.warn(err); return false; }
-}
-
-async function deleteShared(owner,wordId){
-  if(!sb)return false;
-  try{
-    const {error}=await sb.from("progress").delete()
-      .eq("student_key",owner).eq("kind","alias").eq("word_id",wordId);
-    if(error)throw error;
-    return true;
-  }catch(err){ console.warn(err); return false; }
+  try{ await adminRpc("admin_purge_ai_aliases"); return true; }
+  catch(err){ console.warn(err); return false; }
 }
 
 /* ---- detail ---- */
@@ -529,7 +529,7 @@ let activeTab="fav";
 function openDetail(s){
   current=s; activeTab="fav";
   $("dName").textContent=s.name;
-  $("dKey").textContent=s.key;
+  $("dKey").textContent=shortKey(s.key);
   $("favN").textContent=`(${s.fav.length})`;
   $("wrongN").textContent=`(${s.wrong.length})`;
   $("aliasN").textContent=`(${s.alias.length})`;
@@ -600,19 +600,16 @@ function renderAlias(){
       body.appendChild(r);
     });
 }
-async function approveGlobal(e){
+/* 선생님의 "전체 인정" — 모든 학생에게 정답으로 인정 (__ALIAS__ 공유본) */
+async function setGlobal(e,on){
   if(!sb)return false;
   try{
-    const {error}=await sb.from("progress").upsert({
-      student_key:ALIAS_OWNER, student_name:"(공통 인정 답안)",
-      kind:"alias", word_id:e.word_id, word:e.answer,
-      grp:e.grp, day:e.day, updated_at:new Date().toISOString()
-    },{onConflict:"student_key,kind,word_id"});
-    if(error)throw error;
+    await adminRpc("admin_global_alias",{p_on:on, p_word_id:e.word_id, p_word:e.answer, p_grp:e.grp, p_day:e.day});
     return true;
   }catch(err){ console.warn(err); return false; }
 }
-async function revokeGlobal(e){ return deleteShared(ALIAS_OWNER,e.word_id); }
+const approveGlobal=e=>setGlobal(e,true);
+const revokeGlobal =e=>setGlobal(e,false);
 
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 $("backBtn").onclick=()=>{ renderList(); show("list"); };
@@ -721,7 +718,15 @@ function showLock(msg){
   $("ssMsg").textContent=msg||"";
   $("ssPin").value=""; $("ssPin").focus();
 }
-async function openRoster(){ show("roster"); ssPw ? await loadAllRoster() : showLock(""); }
+async function openRoster(){
+  show("roster");
+  if(!ssPw) ssPw=adminPw;        // 들어올 때 쓴 비밀번호가 곧 성적 사이트 관리자 비밀번호
+  if(!ssPw){ showLock(""); return; }
+  try{
+    await loadAllRoster();
+    $("ssLock").classList.add("hidden"); $("ssBody").classList.remove("hidden"); $("ssMsg").textContent="";
+  }catch(e){ if(e.message!=="unauthorized") showLock("불러오지 못했어요."); }
+}
 $("rosterBack").onclick=()=>{ ssPw=""; show("list"); };   // 나가면 번호를 지운다
 
 $("ssGo").onclick=async()=>{
@@ -877,9 +882,7 @@ async function checkLoginFn(){
 async function loadExceptions(){
   if(!sb)return;
   try{
-    const {data,error}=await sb.rpc("roster_list");
-    if(error)throw error;
-    ROSTER=data||[];
+    ROSTER=await adminRpc("admin_roster_list") || [];
   }catch(e){ console.warn(e); ROSTER=[]; }
   renderExceptions();
 }
@@ -892,13 +895,13 @@ function renderExceptions(){
   }
   ROSTER.forEach(st=>{
     const r=document.createElement("div"); r.className="arow";
-    r.innerHTML=`<span class="aw">${esc(st.name)}</span><span class="aa">PIN <b>${esc(st.phone4)}</b>
+    r.innerHTML=`<span class="aw">${esc(st.name)}</span><span class="aa">PIN 은 보안상 저장하지 않아요
       ${st.note?`<small>${esc(st.note)}</small>`:""}</span>`;
     const del=document.createElement("button"); del.className="abtn"; del.textContent="삭제";
     del.onclick=async()=>{
       if(!confirm(`${st.name} 학생의 예외 허용을 지울까요?\n(학습 기록은 남습니다)`))return;
       del.disabled=true;
-      try{ const {error}=await sb.rpc("roster_remove",{p_key:st.student_key}); if(error)throw error; await loadExceptions(); }
+      try{ await adminRpc("admin_roster_remove",{p_key:st.student_key}); await loadExceptions(); }
       catch(e){ alert("삭제하지 못했어요."); del.disabled=false; }
     };
     r.appendChild(del); body.appendChild(r);
@@ -912,8 +915,7 @@ $("rAdd").onclick=async()=>{
   if(!/^\d{4}$/.test(phone)){ msg.textContent="PIN 4자리를 숫자로 입력해 주세요."; return; }
   $("rAdd").disabled=true;
   try{
-    const {error}=await sb.rpc("roster_add",{p_name:name,p_phone:phone,p_note:null});
-    if(error)throw error;
+    await adminRpc("admin_roster_add",{p_name:name,p_phone:phone,p_note:null});
     $("rName").value=""; $("rPhone").value="";
     msg.style.color="var(--accent)"; msg.textContent=`${name} 학생을 예외로 추가했어요.`;
     await loadExceptions();
@@ -922,6 +924,8 @@ $("rAdd").onclick=async()=>{
 };
 $("rPhone").addEventListener("keydown",e=>{ if(e.key==="Enter")$("rAdd").click(); });
 
+// 학생 키(k1_…)는 PIN 이 드러나지 않는 긴 값이라 앞부분만 보여 준다 (동명이인 구분용)
+function shortKey(k){ k=String(k||""); return /^k1_/.test(k) ? "#"+k.slice(3,9) : k; }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 
 /* ---- init ---- */

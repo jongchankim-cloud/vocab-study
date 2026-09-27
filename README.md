@@ -262,7 +262,7 @@ Supabase 대시보드 → 왼쪽 메뉴 **Edge Functions** → **Secrets** 탭 �
 |---|---|
 | Value | AI Studio 에서 발급받은 키 |
 
-등록한 뒤 `admin.html` → 관리자 번호 → 명단 화면의 **[🔌 연결 확인]** 을 누르면 됩니다.
+등록한 뒤 `admin.html` → 관리자 비밀번호 → 명단 화면의 **[🔌 연결 확인]** 을 누르면 됩니다.
 
 함수 코드를 고쳤을 때만 아래 재배포 절차가 필요합니다.
 
@@ -295,7 +295,7 @@ Supabase 대시보드 → 왼쪽 메뉴 **Edge Functions** → **Secrets** 탭 �
 
 **3단계 — 확인**
 
-`admin.html` 을 열고 관리자 번호를 입력하면 명단 화면 아래에
+`admin.html` 을 열고 관리자 비밀번호(성적 사이트와 같음)를 입력하면 명단 화면 아래에
 **🤖 AI가 인정한 답안** 칸이 있습니다. 거기 **[🔌 연결 확인]** 을 누르세요.
 
 - ✓ 초록색 → 끝났습니다. 학생 화면에서 바로 동작합니다.
@@ -481,27 +481,38 @@ score-system 은 `students` 표를 anon 에 열지 않고 `admin-api` Edge Funct
 > 참고: 이름과 뒷 4자리를 아는 사람이 그 학생으로 입장하는 것까지는 막지 못합니다.
 > 거기까지 막으려면 학생별 비밀번호가 필요합니다.
 
-## 데이터베이스 메모
+## 데이터베이스 메모 — 보안 구조 (2026-09-27)
 
-`students` 표와 명단 관련 함수는 마이그레이션 `student_roster` 로 만들어져 있습니다.
-(`student_login`, `roster_list`, `roster_add`, `roster_remove`, `roster_seed_from_progress`)
+브라우저는 표를 직접 읽거나 쓰지 않습니다. 모든 기록은 서버의 **창구 함수**로만 드나듭니다.
+(성적 사이트가 `parent-login` · `admin-api` 로만 드나드는 것과 같은 원칙입니다.)
 
-`progress` 테이블은 이미 아래 조건을 만족하므로 스키마 변경 없이 동작합니다.
+| 누가 | 창구 함수 | 확인 |
+|---|---|---|
+| 학생 | `student_login` → 학생 키 | 이름 + PIN (성적 사이트 `parent-login`) |
+| 학생 | `progress_mine` · `progress_put` · `progress_del` · `alias_ai_share` · `shared_aliases` | 로그인에 성공한 적 있는 학생 키만 |
+| 선생님 | `admin_login` → 12시간 통행증 | 성적 사이트 관리자 비밀번호 (`admin-api` 에 읽기 요청 1번) |
+| 선생님 | `admin_progress_all` · `admin_global_alias` · `admin_delete_ai_alias` · `admin_purge_ai_aliases` · `admin_roster_*` | 통행증 |
 
-- `UNIQUE (student_key, kind, word_id)` — 인정 답안 저장(upsert)에 필요
-- `kind` 에 CHECK 제약이 없어 `alias` / `alias_req` / `alias_ai` 가 그대로 들어감
-- 모든 열이 `text` 라 길이 제한 문제 없음
+- **학생 키에는 PIN 이 없습니다.** `k1_` + 비밀값으로 섞은 32글자라서, 키를 보고 PIN 을 알아낼 수 없습니다.
+  같은 이름 · PIN 이면 언제나 같은 키가 나옵니다. 비밀값은 API 로 노출되지 않는 `private` 스키마에 있습니다.
+- 예외 명단(`students`)에도 PIN 을 저장하지 않습니다. 관리 화면에서 PIN 을 다시 볼 수 없습니다.
+- 관리 화면의 입장 번호를 페이지에 적어 두지 않습니다. 비밀번호는 저장하지 않고, 통행증만 서버에 12시간 남습니다.
+- 성적 사이트가 응답하지 않으면 학생은 입장은 하되 **그 접속의 기록은 저장되지 않습니다**
+  (확인 안 된 이름·PIN 으로 기록을 열면 PIN 을 알아내는 통로가 되기 때문입니다).
+- 남은 한계: AI 인정 답안 공유(`alias_ai_share`)는 로그인한 학생이면 부를 수 있습니다.
+  잘못 공유된 답은 관리 화면 **🤖 AI가 인정한 답안** 에서 지우면 됩니다.
 
-한 가지 선택 사항: RLS 에 **UPDATE 정책이 없습니다.** SELECT · INSERT · DELETE 만 있어서,
-이미 있는 행을 다시 upsert 할 때(같은 답을 두 학생이 동시에 인정받는 경우 등)
-조용히 실패합니다. 앱이 메모리에서 중복을 걸러 주기 때문에 실제로 문제가 되는 일은
-드물지만, 깔끔하게 하려면 **SQL Editor** 에서 한 줄 실행하면 됩니다.
+SQL 파일 (`supabase/migrations/`)
 
-```sql
-create policy "anon can update" on public.progress for update using (true) with check (true);
-```
+| 파일 | 내용 |
+|---|---|
+| `20260927_1_학생키_PIN_제거.sql` | 키를 새 키로 옮기고 창구 함수를 만든다. 옛 화면과도 호환 |
+| `20260927_2_기록표_잠그기.sql` | 표를 잠근다. 새 화면이 main 에 반영된 뒤에 적용 |
+| `20260927_9_비상_되돌리기.sql` | [A] 잠금만 풀기 / [B] 키까지 이름_PIN 으로 되돌리기 |
+| `99_비상_되돌리기.sql` | 입장이 막혔을 때 누구나 입장 (새 키를 준다) |
 
-(DELETE 와 INSERT 가 이미 열려 있으므로 보안 수준이 달라지지는 않습니다.)
+`progress` 표: `UNIQUE (student_key, kind, word_id)`. `kind` 에 제약이 없어 새 종류를 그대로 쓸 수 있습니다
+(`progress_put` 은 영문 소문자·밑줄 20자까지 받습니다).
 
 ## 퀴즈는 언제나 20문제
 
