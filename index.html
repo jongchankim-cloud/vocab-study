@@ -243,6 +243,29 @@
   .sync-dot.ok{background:var(--accent)}
   .sync-dot.busy{background:var(--gold);animation:pulse 1s infinite}
   @keyframes pulse{50%{opacity:.3}}
+
+  /* ---------- 과목 탭 (단어 · 어법 · 지문) ---------- */
+  .subj-tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:5px;margin-bottom:14px}
+  .subj-tabs button{flex:1;border-radius:10px;padding:11px 6px;font-weight:800;font-size:15px;color:var(--ink-soft)}
+  .subj-tabs button.on{background:var(--accent);color:#fff}
+  .day-chip.soon{opacity:.45;cursor:default}
+  .day-chip.soon:hover{border-color:var(--line);background:var(--paper)}
+  .day-chip.wrongchip{background:var(--wrong-soft);border-color:var(--wrong);color:var(--wrong);grid-column:1/-1}
+
+  /* ---------- 지문 ---------- */
+  .psg-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .psg-head h2{font-size:22px;font-weight:800;flex:1}
+  .psg-en{font-size:17.5px;line-height:1.85;white-space:pre-line;font-family:Georgia,"Times New Roman",serif}
+  .psg-ko-t{margin:26px 0 10px;font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--gold)}
+  .psg-ko{font-size:15.5px;line-height:1.85;white-space:pre-line;color:var(--ink-soft);border-top:1px dashed var(--line);padding-top:14px}
+  .psg-nav{display:flex;gap:10px;margin-top:18px}
+  .psg-nav button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px;font-weight:700}
+  .psg-nav button:disabled{opacity:.35;cursor:default}
+
+  /* ---------- 어법 ---------- */
+  .gq-sent{font-size:19px;line-height:1.8;margin:6px 0 18px;font-family:Georgia,"Times New Roman",serif}
+  .gq-sent u{text-decoration:none;border-bottom:2.5px solid var(--gold);background:#fbf4e4;padding:0 3px;font-weight:700}
+  .gq-where{font-size:12px;color:var(--ink-soft);margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -285,7 +308,10 @@
   <!-- ============ SCREEN: DAY select ============ -->
   <section id="screen-day" class="hidden">
     <h1 class="title" id="dayTitle">범위 선택</h1>
-    <p class="subtitle">전체로 한 번에, 또는 <span id="unitWord">챕터</span>를 <b>여러 개 골라서</b> 함께 공부·시험 볼 수 있어요.</p>
+    <div class="subj-tabs" id="subjTabs">
+      <button data-s="vocab">📖 단어</button><button data-s="grammar">✍️ 어법</button><button data-s="passage">📜 지문</button>
+    </div>
+    <p class="subtitle" id="daySub">전체로 한 번에, 또는 <span id="unitWord">챕터</span>를 <b>여러 개 골라서</b> 함께 공부·시험 볼 수 있어요.</p>
     <div class="panel">
       <div class="day-grid" id="dayGrid"></div>
       <div class="pick-bar hidden" id="pickBar">
@@ -378,6 +404,41 @@
         <button class="primary" id="resRetry">다시 풀기</button>
         <button class="warn hidden" id="resWrong">틀린 단어만 풀기</button>
         <button id="resHome">학습 메뉴로</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: PASSAGE (지문 원문 + 해석) ============ -->
+  <section id="screen-passage" class="hidden">
+    <div class="panel">
+      <div class="psg-head"><h2 id="psgTitle"></h2></div>
+      <div id="psgBody"></div>
+    </div>
+    <div class="psg-nav"><button id="psgPrev">← 이전 지문</button><button id="psgNext">다음 지문 →</button></div>
+  </section>
+
+  <!-- ============ SCREEN: GRAMMAR QUIZ (밑줄 친 곳 고쳐 쓰기) ============ -->
+  <section id="screen-gquiz" class="hidden">
+    <div class="stage" id="gqStage">
+      <div class="progress"><i id="gqBar"></i></div>
+      <div class="counter" id="gqCounter"></div>
+      <div class="gq-where" id="gqWhere"></div>
+      <div class="gq-sent" id="gqSent"></div>
+      <div class="quiz-prompt" style="text-align:left">밑줄 친 부분을 <b>바르게 고쳐</b> 쓰세요</div>
+      <div class="ans-row">
+        <input id="gqInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="고친 표현을 입력하세요">
+        <button id="gqSubmit">확인</button>
+      </div>
+      <div id="gqFeed" class="ans-feed hidden"></div>
+      <div class="quiz-foot"><span class="score" id="gqScore"></span><button id="gqNext" class="hidden">다음 →</button></div>
+    </div>
+    <div class="result hidden" id="gqResult">
+      <div class="big" id="gqPct"></div>
+      <div class="lbl" id="gqLbl"></div>
+      <div class="row">
+        <button class="primary" id="gqRetry">다시 풀기</button>
+        <button class="warn hidden" id="gqWrongOnly">틀린 문제만 풀기</button>
+        <button id="gqBack">범위 선택으로</button>
       </div>
     </div>
   </section>
@@ -2966,7 +3027,7 @@ const state = {
 };
 
 const $ = id => document.getElementById(id);
-const screens = ["login","home","day","mode","flash","quiz","result","list"];
+const screens = ["login","home","day","mode","flash","quiz","result","list","passage","gquiz"];
 function show(name){
   screens.forEach(s=>$("screen-"+s).classList.toggle("hidden", s!==name));
   buildCrumb(name);
@@ -3030,11 +3091,20 @@ function buildHome(){
   });
 }
 
-/* ---------- DAY screen ---------- */
+/* ---------- DAY screen ----------
+   위의 탭으로 과목을 고른다.
+   단어: 챕터를 골라 학습 방법으로 / 어법: 챕터를 골라 바로 퀴즈 / 지문: 번호를 누르면 그 지문으로 */
+let subject="vocab";
+document.querySelectorAll("#subjTabs button").forEach(b=>b.onclick=()=>{ subject=b.dataset.s; openDayScreen(state.group); });
 function openDayScreen(group){
   state.group=group;
+  document.querySelectorAll("#subjTabs button").forEach(b=>b.classList.toggle("on",b.dataset.s===subject));
+  state.pick=new Set();
+  $("pickBar").classList.add("hidden");
+  if(subject==="passage") return openPassageList(group);
+  if(subject==="grammar") return openGrammarList(group);
   $("dayTitle").textContent=group+" · 범위 선택";
-  const uw=$("unitWord"); if(uw) uw.textContent=unitName(group);
+  $("daySub").innerHTML=`전체로 한 번에, 또는 <span id="unitWord">${esc(unitName(group))}</span>를 <b>여러 개 골라서</b> 함께 공부·시험 볼 수 있어요.`;
   const grid=$("dayGrid"); grid.innerHTML="";
   const total=countGroup(group);
 
@@ -3071,11 +3141,24 @@ function pickLabel(group){
 }
 function renderPickBar(group){
   const bar=$("pickBar");
-  const ks=dayKeys(group).filter(d=>state.pick.has(d));
+  const ks=pickOrder(group).filter(d=>state.pick.has(d));
   if(!ks.length){ bar.classList.add("hidden"); return; }
-  const n=ks.reduce((a,d)=>a+VOCAB_DATA[group].days[d].length,0);
-  $("pickTxt").textContent=`${esc(unitName(group))} ${ks.length}개 선택 · 단어 ${n}개`;
+  if(subject==="grammar"){
+    const n=ks.reduce((a,d)=>a+(gramCounts(group)[d]||0),0);
+    $("pickTxt").textContent=`지문 ${ks.length}개 선택 · 어법 ${n}문제`;
+    $("pickGo").textContent="선택한 범위로 풀기";
+  }else{
+    const n=ks.reduce((a,d)=>a+VOCAB_DATA[group].days[d].length,0);
+    $("pickTxt").textContent=`${unitName(group)} ${ks.length}개 선택 · 단어 ${n}개`;
+    $("pickGo").textContent="선택한 범위로 공부하기";
+  }
   bar.classList.remove("hidden");
+}
+/* 챕터 순서: 단어에 적힌 순서, 단어에 없는 지문 번호는 뒤에 */
+function pickOrder(group){
+  const base=VOCAB_DATA[group]?dayKeys(group):[];
+  const extra=[...(CONTENT.passages[group]||[]), ...Object.keys(gramCounts(group))].filter(k=>!base.includes(k));
+  return [...base, ...new Set(extra)];
 }
 $("pickClear").onclick=()=>{
   state.pick=new Set();
@@ -3083,8 +3166,9 @@ $("pickClear").onclick=()=>{
   renderPickBar(state.group);
 };
 $("pickGo").onclick=()=>{
-  const ks=dayKeys(state.group).filter(d=>state.pick.has(d));
+  const ks=pickOrder(state.group).filter(d=>state.pick.has(d));
   if(!ks.length)return;
+  if(subject==="grammar") return startGrammar(state.group, ks);
   setScope(state.group, ks, pickLabel(state.group));
 };
 
@@ -4479,6 +4563,159 @@ $("resWrong").onclick=()=>{
 };
 $("resHome").onclick=()=>show("mode");
 
+/* ---------- 지문 · 어법 ----------
+   원문 · 해석 · 어법 문제는 공개 저장소에 두지 않고 DB 에만 있다.
+   로그인한 학생 키로만 받을 수 있고, 어법 정답은 서버가 채점해서 알려 준다. */
+const CONTENT={passages:{}, grammar:{}};   // 어떤 지문에 원문 · 어법이 있는지
+const gramWrong=new Set(), gramOk=new Set();   // 틀린 어법 "그룹|지문|문제id" (2번 연속 맞히면 제외)
+function gramCounts(group){ return CONTENT.grammar[group]||{}; }
+function needLogin(box){
+  if(student.key) return false;
+  box.innerHTML=`<div class="empty-state"><div class="e-ic">🔒</div>지금은 로그인 확인이 안 돼서 지문·어법을 불러올 수 없어요.<br>잠시 후 다시 들어와 주세요.</div>`;
+  return true;
+}
+
+function openPassageList(group){
+  $("dayTitle").textContent=group+" · 지문";
+  $("daySub").innerHTML="지문 번호를 누르면 <b>원문과 해석</b>을 볼 수 있어요.";
+  const grid=$("dayGrid"); grid.innerHTML="";
+  if(needLogin(grid)){ show("day"); return; }
+  const have=CONTENT.passages[group]||[];
+  if(!have.length) grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="e-ic">📜</div>아직 준비된 지문이 없어요.</div>`;
+  have.forEach(pid=>{
+    const chip=document.createElement("button"); chip.className="day-chip";
+    chip.innerHTML=`<div class="d-num">${esc(dayLabel(group,pid))}</div><div class="d-count">원문 · 해석</div>`;
+    chip.onclick=()=>openPassage(group,pid);
+    grid.appendChild(chip);
+  });
+  show("day");
+}
+
+async function openPassage(group,pid){
+  const list=CONTENT.passages[group]||[]; const i=list.indexOf(pid);
+  $("psgTitle").textContent=dayLabel(group,pid);
+  $("psgBody").innerHTML=`<p class="note" style="color:var(--ink-soft)">불러오는 중…</p>`;
+  $("psgPrev").disabled=i<=0; $("psgNext").disabled=i<0||i>=list.length-1;
+  $("psgPrev").onclick=()=>openPassage(group,list[i-1]);
+  $("psgNext").onclick=()=>openPassage(group,list[i+1]);
+  show("passage");
+  try{
+    const {data,error}=await sb.rpc("passage_get",{p_key:student.key,p_grp:group,p_pid:pid});
+    if(error)throw error;
+    if(!data){ $("psgBody").innerHTML=`<div class="empty-state">지문을 찾을 수 없어요.</div>`; return; }
+    $("psgBody").innerHTML=`<div class="psg-en">${esc(data.en)}</div>`+
+      (data.ko?`<div class="psg-ko-t">해석</div><div class="psg-ko">${esc(data.ko)}</div>`:"");
+  }catch(e){ console.warn(e); $("psgBody").innerHTML=`<div class="empty-state">지문을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>`; }
+}
+
+function openGrammarList(group){
+  $("dayTitle").textContent=group+" · 어법";
+  $("daySub").innerHTML="전체로 한 번에, 또는 지문을 <b>여러 개 골라서</b> 풀 수 있어요. 밑줄 친 부분을 바르게 고쳐 쓰는 문제예요.";
+  const grid=$("dayGrid"); grid.innerHTML="";
+  if(needLogin(grid)){ show("day"); return; }
+  const cnt=gramCounts(group); const keys=pickOrder(group).filter(k=>cnt[k]);
+  const total=keys.reduce((a,k)=>a+cnt[k],0);
+  if(!total){ grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="e-ic">✍️</div>아직 준비된 어법 문제가 없어요.</div>`; show("day"); return; }
+  const all=document.createElement("button"); all.className="day-chip all";
+  all.innerHTML=`<div class="d-num">전체 풀기</div><div class="d-count">${total}문제 · 지문 ${keys.length}개</div>`;
+  all.onclick=()=>startGrammar(group,null);
+  grid.appendChild(all);
+  const wrongIds=[...gramWrong].filter(k=>k.startsWith(group+"|"));
+  if(wrongIds.length){
+    const w=document.createElement("button"); w.className="day-chip wrongchip";
+    w.innerHTML=`<div class="d-num">🔁 틀린 어법 다시 풀기</div><div class="d-count" style="color:inherit">${wrongIds.length}문제 · 2번 연속 맞히면 빠져요</div>`;
+    w.onclick=()=>startGrammar(group,null,new Set(wrongIds.map(k=>k.split("|").pop())));
+    grid.appendChild(w);
+  }
+  keys.forEach(d=>{
+    const chip=document.createElement("button"); chip.className="day-chip";
+    chip.innerHTML=`<span class="d-tick">✓</span><div class="d-num">${esc(dayLabel(group,d))}</div><div class="d-count">${cnt[d]}문제</div>`;
+    chip.onclick=()=>{ if(state.pick.has(d)) state.pick.delete(d); else state.pick.add(d);
+                       chip.classList.toggle("on",state.pick.has(d)); renderPickBar(group); };
+    grid.appendChild(chip);
+  });
+  show("day");
+}
+
+/* 어법 퀴즈 — 문제만 받아 오고, 채점은 서버가 한다 */
+const G={group:null, pids:null, only:null, order:[], i:0, score:0, wrong:[], answered:false};
+async function startGrammar(group,pids,onlyIds){
+  let list;
+  try{
+    const {data,error}=await sb.rpc("grammar_questions",{p_key:student.key,p_grp:group,p_pids:pids});
+    if(error)throw error; list=data||[];
+  }catch(e){ console.warn(e); alert("어법 문제를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."); return; }
+  if(onlyIds) list=list.filter(q=>onlyIds.has(String(q.id)));
+  if(!list.length){ alert("풀 문제가 없어요."); return; }
+  Object.assign(G,{group, pids, only:onlyIds||null, order:shuffle(list).slice(0,QUIZ_LEN), i:0, score:0, wrong:[]});
+  $("gqStage").classList.remove("hidden"); $("gqResult").classList.add("hidden");
+  renderGrammar(); show("gquiz");
+}
+function gramKey(q){ return `${G.group}|${q.pid}|${q.id}`; }
+function renderGrammar(){
+  const q=G.order[G.i];
+  $("gqCounter").textContent=`${G.i+1} / ${G.order.length}`;
+  $("gqBar").style.width=(G.i/G.order.length)*100+"%";
+  $("gqScore").textContent=`점수 ${G.score} / ${G.order.length}`;
+  $("gqWhere").textContent=dayLabel(G.group,q.pid)+(gramWrong.has(gramKey(q))?" · 🔁 틀렸던 문제":"");
+  // [ ] 로 감싼 부분에 밑줄
+  $("gqSent").innerHTML=esc(q.q).replace(/\[([^\]]+)\]/g,"<u>$1</u>");
+  const inp=$("gqInput"); inp.value=""; inp.disabled=false; $("gqSubmit").disabled=false;
+  $("gqFeed").classList.add("hidden"); $("gqNext").classList.add("hidden");
+  G.answered=false; setTimeout(()=>inp.focus(),30);
+}
+async function submitGrammar(){
+  if(G.answered) return;
+  const q=G.order[G.i]; const ans=$("gqInput").value;
+  G.answered=true; $("gqInput").disabled=true; $("gqSubmit").disabled=true;
+  let r;
+  try{
+    const {data,error}=await sb.rpc("grammar_check",{p_key:student.key,p_id:q.id,p_answer:ans});
+    if(error||!data) throw error||new Error("empty");
+    r=data;
+  }catch(e){
+    console.warn(e); G.answered=false; $("gqInput").disabled=false; $("gqSubmit").disabled=false;
+    alert("채점하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요."); return;
+  }
+  const answers=(r.answers||[]).map(esc).join(" / ");
+  const note=r.note?`<div style="margin-top:6px">💡 ${esc(r.note)}</div>`:"";
+  const k=gramKey(q); let streak="";
+  if(r.ok){
+    G.score++;
+    if(gramWrong.has(k)){
+      if(gramOk.has(k)){ gramOk.delete(k); syncDelete("gram_ok",k); gramWrong.delete(k); syncDelete("gram_wrong",k); streak="🎉 2번 연속 정답! 틀린 어법에서 뺐어요."; }
+      else { gramOk.add(k); gramSave("gram_ok",q); streak="🔁 한 번 더 맞히면 틀린 어법에서 빠져요."; }
+    }
+  }else{
+    G.wrong.push(q);
+    if(gramOk.has(k)){ gramOk.delete(k); syncDelete("gram_ok",k); }
+    if(!gramWrong.has(k)){ gramWrong.add(k); gramSave("gram_wrong",q); }
+  }
+  const f=$("gqFeed");
+  f.className="ans-feed "+(r.ok?"ok":"no");
+  f.innerHTML=r.ok
+    ? `<span class="fb-t">⭕ 정답</span><div class="fb-line">정답: <b>${answers}</b>${note}${streak?`<div style="margin-top:8px;font-weight:700">${streak}</div>`:""}</div>`
+    : `<span class="fb-t">❌ 오답</span><div class="fb-line">${ans.trim()?`내 답: ${esc(ans.trim())}<br>`:""}정답: <b>${answers}</b>${note}</div>`;
+  $("gqScore").textContent=`점수 ${G.score} / ${G.order.length}`;
+  $("gqNext").textContent=G.i===G.order.length-1?"결과 보기":"다음 →";
+  $("gqNext").classList.remove("hidden"); setTimeout(()=>$("gqNext").focus(),30);
+}
+function gramSave(kind,q){
+  return rpcSave("progress_put",{p_kind:kind, p_word_id:gramKey(q), p_word:q.q, p_grp:G.group, p_day:q.pid});
+}
+$("gqSubmit").onclick=submitGrammar;
+$("gqInput").addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submitGrammar(); } });
+$("gqNext").onclick=()=>{
+  if(G.i<G.order.length-1){ G.i++; renderGrammar(); return; }
+  $("gqStage").classList.add("hidden"); $("gqResult").classList.remove("hidden");
+  $("gqPct").textContent=Math.round(G.score/G.order.length*100)+"점";
+  $("gqLbl").textContent=`${G.order.length}문제 중 ${G.score}문제 정답`;
+  $("gqWrongOnly").classList.toggle("hidden",!G.wrong.length);
+};
+$("gqRetry").onclick=()=>startGrammar(G.group,G.pids,G.only);
+$("gqWrongOnly").onclick=()=>startGrammar(G.group,G.pids,new Set(G.wrong.map(q=>String(q.id))));
+$("gqBack").onclick=()=>openDayScreen(G.group);
+
 /* ---------- LIST / FAVORITES ---------- */
 /* 이 그룹에서 틀린 단어들 (챕터 무관, 저장된 전체) */
 function wrongItems(){
@@ -4627,6 +4864,7 @@ async function doLogin(){
 }
 function logout(){
   favorites.clear(); wrongStore.clear(); wrongOk.clear(); aliasOwn.clear(); aliasGlobal.clear(); aliasAsked.clear();
+  gramWrong.clear(); gramOk.clear(); CONTENT.passages={}; CONTENT.grammar={};
   student.key=null; student.name=null;
   $("whoami").classList.add("hidden");
   $("loginName").value=""; $("loginPhone").value="";
@@ -4638,12 +4876,14 @@ async function loadProgress(){
   try{
     const {data,error}=await sb.rpc("progress_mine",{p_key:student.key});
     if(error)throw error;
-    favorites.clear(); wrongStore.clear(); wrongOk.clear(); aliasOwn.clear();
+    favorites.clear(); wrongStore.clear(); wrongOk.clear(); aliasOwn.clear(); gramWrong.clear(); gramOk.clear();
     (data||[]).forEach(r=>{
       if(r.kind==="fav") favorites.add(r.word_id);
       else if(r.kind==="wrong") wrongStore.add(r.word_id);
       else if(r.kind==="wrong_ok") wrongOk.add(r.word_id);
       else if(r.kind==="alias"||r.kind==="alias_ai") aliasOwn.add(r.word_id);
+      else if(r.kind==="gram_wrong") gramWrong.add(r.word_id);
+      else if(r.kind==="gram_ok") gramOk.add(r.word_id);
     });
   }catch(e){ console.warn("loadProgress 실패", e); }
   // 선생님이 모든 학생에게 인정해 준 답안
@@ -4653,6 +4893,12 @@ async function loadProgress(){
     aliasGlobal.clear();
     (data||[]).forEach(id=>aliasGlobal.add(id));
   }catch(e){ console.warn("공통 인정 답안 로드 실패", e); }
+  // 지문 · 어법 목록 (내용은 누를 때 받는다)
+  try{
+    const {data,error}=await sb.rpc("content_index",{p_key:student.key});
+    if(error)throw error;
+    CONTENT.passages=(data&&data.passages)||{}; CONTENT.grammar=(data&&data.grammar)||{};
+  }catch(e){ console.warn("지문·어법 목록 로드 실패", e); }
 }
 /* 기록은 표에 직접 쓰지 않고 서버의 창구 함수로만 저장한다.
    함수가 학생 키를 확인하고 그 학생의 기록만 다룬다. */

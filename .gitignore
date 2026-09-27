@@ -6,3 +6,4 @@ supabase/.env
 supabase/functions/.env
 *.key
 .supabase/
+.preview/
