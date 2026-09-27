@@ -260,6 +260,12 @@
   .psg-kobtn{display:block;width:100%;margin-top:22px;border:1px dashed var(--accent);color:var(--accent);background:var(--accent-soft);
     border-radius:12px;padding:13px;font-weight:800;font-size:15px}
   .psg-kobtn.open{border-style:solid;background:var(--card)}
+  .sen{cursor:pointer;border-radius:4px;transition:background .15s}
+  .sen:hover{background:var(--accent-soft)}
+  .sen.open{background:var(--accent-soft)}
+  .sen-ko{display:block;margin:6px 0 10px;padding:9px 12px;border-left:3px solid var(--accent);background:var(--card);
+    font-family:inherit;font-size:14.5px;line-height:1.7;color:var(--ink-soft);border-radius:0 8px 8px 0}
+  .psg-tip{font-size:12.5px;color:var(--ink-soft);margin-bottom:10px}
   .psg-words .vrow{align-items:flex-start;padding:11px 4px}
   .psg-words .vw{font-size:15.5px;min-width:0;flex:0 0 42%}
   .psg-words .vm{color:var(--ink);font-size:14.5px}
@@ -4613,16 +4619,37 @@ async function openPassage(group,pid){
     // 단어: 지문에 따로 넣은 목록, 없으면 단어 탭의 같은 번호 챕터
     const words = (data.words&&data.words.length) ? data.words
                 : ((VOCAB_DATA[group]||{days:{}}).days[pid]||[]).map(e=>({w:e.w,m:e.m}));
-    $("psgBody").innerHTML=`<div class="psg-en">${esc(data.en)}</div>`+
-      (data.ko?`<button class="psg-kobtn" id="psgKoBtn">해석 보기 ▾</button>
-               <div class="psg-ko hidden" id="psgKo">${esc(data.ko)}</div>`:"")+
-      (words.length?`<div class="psg-ko-t">WORDS &amp; EXPRESSIONS · ${words.length}개</div>
-        <div class="psg-words">${words.map(x=>`<div class="vrow"><span class="vw">${esc(x.w)}</span>
-          <span class="vm">${esc(x.m)}${x.note?`<span class="wn">* ${esc(x.note)}</span>`:""}</span></div>`).join("")}</div>`:"");
+    // 원문 · 해석에 ❶❷… 번호가 같은 개수로 있으면 문장을 눌러 그 문장 해석만 볼 수 있다
+    const enS=splitSentences(data.en), koS=splitSentences(data.ko||"");
+    const bySentence = enS && koS && enS.length===koS.length;
+    const enHtml = bySentence
+      ? enS.map((t,k)=>`<span class="sen" data-k="${k}">${esc(t)}</span><span class="sen-ko hidden" id="senKo${k}">${esc(koS[k])}</span>`).join(" ")
+      : esc(data.en);
+    const label = data.ko ? (words.length?"해석 · 단어 보기":"해석 보기") : "단어 보기";
+    $("psgBody").innerHTML=
+      (bySentence?`<div class="psg-tip">👆 문장을 누르면 그 문장의 해석이 보여요</div>`:"")+
+      `<div class="psg-en">${enHtml}</div>`+
+      ((data.ko||words.length)?`<button class="psg-kobtn" id="psgKoBtn">${label} ▾</button>`:"")+
+      `<div class="hidden" id="psgMore">`+
+        (data.ko?`<div class="psg-ko-t">해석</div><div class="psg-ko">${esc(data.ko)}</div>`:"")+
+        (words.length?`<div class="psg-ko-t">WORDS &amp; EXPRESSIONS · ${words.length}개</div>
+          <div class="psg-words">${words.map(x=>`<div class="vrow"><span class="vw">${esc(x.w)}</span>
+            <span class="vm">${esc(x.m)}${x.note?`<span class="wn">* ${esc(x.note)}</span>`:""}</span></div>`).join("")}</div>`:"")+
+      `</div>`;
+    document.querySelectorAll("#psgBody .sen").forEach(el=>el.onclick=()=>{
+      const open=$("senKo"+el.dataset.k).classList.toggle("hidden")===false;
+      el.classList.toggle("open",open);
+    });
     const kb=$("psgKoBtn");
-    if(kb) kb.onclick=()=>{ const open=$("psgKo").classList.toggle("hidden")===false;
-      kb.classList.toggle("open",open); kb.textContent=open?"해석 숨기기 ▴":"해석 보기 ▾"; };
+    if(kb) kb.onclick=()=>{ const open=$("psgMore").classList.toggle("hidden")===false;
+      kb.classList.toggle("open",open); kb.textContent=open?label.replace("보기","숨기기")+" ▴":label+" ▾"; };
   }catch(e){ console.warn(e); $("psgBody").innerHTML=`<div class="empty-state">지문을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>`; }
+}
+
+/* ❶❷… (또는 ①②…) 번호로 문장을 나눈다. 번호가 없으면 null */
+function splitSentences(t){
+  const parts=String(t||"").split(/(?=[\u2776-\u277F\u24EB-\u24F4\u2460-\u2473])/).map(x=>x.trim()).filter(Boolean);
+  return parts.length>1 && /^[\u2776-\u277F\u24EB-\u24F4\u2460-\u2473]/.test(parts[0]) ? parts : null;
 }
 
 function openGrammarList(group){
