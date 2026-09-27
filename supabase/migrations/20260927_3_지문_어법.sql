@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 지문 · 어법 — 공개 저장소에 두지 않고 DB 에만 둔다
 --
---   passages      지문 원문 · 해석 (그룹 · 지문 번호별)
+--   passages      지문 원문 · 해석 · 단어 목록 (그룹 · 지문 번호별)
 --   grammar_items 어법 문제. q 의 [대괄호] 부분이 밑줄 칠 곳, a 는 정답(여러 개 가능)
 --
 -- 두 표 모두 브라우저(anon)가 직접 읽을 수 없다.
@@ -18,9 +18,11 @@ create table if not exists public.passages (
   ord        integer not null default 0,
   en         text not null,            -- 원문
   ko         text,                     -- 해석 (없어도 됨)
+  words      jsonb,                    -- 지문 단어 [{w, m, note}] (없으면 같은 번호의 단어 챕터를 보여 준다)
   updated_at timestamptz not null default now(),
   primary key (grp, pid)
 );
+alter table public.passages add column if not exists words jsonb;
 
 create table if not exists public.grammar_items (
   id         bigserial primary key,
@@ -67,7 +69,7 @@ $$;
 create or replace function public.passage_get(p_key text, p_grp text, p_pid text) returns json
 language sql stable security definer set search_path = '' as $$
   select case when not private.is_student(p_key) then null else
-    (select json_build_object('pid', p.pid, 'en', p.en, 'ko', p.ko)
+    (select json_build_object('pid', p.pid, 'en', p.en, 'ko', p.ko, 'words', p.words)
        from public.passages p where p.grp = p_grp and p.pid = p_pid) end;
 $$;
 
