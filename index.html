@@ -275,22 +275,24 @@
   .psg-kobtn{display:block;margin-left:auto;margin-right:auto}
   /* 휴대폰: 글자를 한 단계 작게 */
   @media(max-width:560px){
-    #screen-psglist .title{font-size:24px}
-    #screen-psglist .subtitle{font-size:13.5px}
-    .psg-group h3{font-size:14px}
-    #psgListBody .day-chip{padding:11px 4px}
-    #psgListBody .day-chip .d-num{font-size:12.5px !important;white-space:nowrap;letter-spacing:-.02em}
-    #psgTitle{font-size:18px}
-    .psg-tip{font-size:12px}
-    .psg-en{font-size:15.5px;line-height:1.75}
-    .sen-ko{font-size:13.5px;line-height:1.6;padding:8px 10px}
-    .psg-ko{font-size:14px;line-height:1.7;padding:12px 14px}
-    .psg-kobtn{font-size:13.5px;padding:9px 14px}
-    .psg-words-t{font-size:12px}
-    .psg-words .vw{font-size:14px}
-    .psg-words .vm{font-size:13.5px}
-    .psg-words .wn{font-size:11.5px}
+    #screen-psglist .title{font-size:22px}
+    #screen-psglist .subtitle{font-size:13px}
+    .psg-group h3{font-size:13.5px}
+    #psgListBody .day-chip{padding:10px 4px}
+    #psgListBody .day-chip .d-num{font-size:12px !important;white-space:nowrap;letter-spacing:-.02em}
+    #psgTitle{font-size:17px}
+    #psgCount{font-size:11.5px}
+    .psg-tip{font-size:11.5px}
+    .psg-en{font-size:14.5px;line-height:1.7}
+    .sen-ko{font-size:13px;line-height:1.6;padding:7px 10px}
+    .psg-ko{font-size:13px;line-height:1.65;padding:11px 13px}
+    .psg-kobtn{font-size:13px;padding:8px 13px}
+    .psg-words-t{font-size:11.5px}
+    .psg-words .vw{font-size:13px}
+    .psg-words .vm{font-size:12.5px}
+    .psg-words .wn{font-size:11px}
   }
+
 </style>
 </head>
 <body>
@@ -499,7 +501,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-17-7";
+const APP_VER = "2026-10-17-8";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
