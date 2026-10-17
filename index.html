@@ -429,7 +429,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-09-27-1";
+const APP_VER = "2026-10-17-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -471,7 +471,8 @@ const AI_SHARE_ACCEPTED = true;  // AI가 인정한 답을 모든 학생에게 �
    - 비어 있는 그룹은 홈 화면에서 "준비 중"으로 표시됩니다.
    ===================================================================== */
 
-const GROUPS = ["용산 고1 2026 2학기 중간고사", "용산 고2 2026 2학기 중간고사"];
+const GROUPS = ["용산 고1 2026 2학기 기말고사", "용산 고2 2026 2학기 기말고사",
+                "용산 고1 2026 2학기 중간고사", "용산 고2 2026 2학기 중간고사"];
 
 const VOCAB_DATA = {
   "용산 고1 2026 2학기 중간고사": {
@@ -2939,6 +2940,18 @@ const VOCAB_DATA = {
         {w:"volunteer", m:"(시간·노력을) 자발적으로 제공하다[바치다]"},
         {w:"for the purpose of", m:"~을 목적으로[위해]"}
       ]
+    }
+  },
+  "용산 고1 2026 2학기 기말고사": {
+    tag: "고1 · 2026 2학기",
+    unit: "챕터",
+    days: {
+    }
+  },
+  "용산 고2 2026 2학기 기말고사": {
+    tag: "고2 · 2026 2학기",
+    unit: "챕터",
+    days: {
     }
   }
 };
