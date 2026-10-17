@@ -267,6 +267,30 @@
   .psg-nav button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px 10px;font-weight:700;font-size:14px}
   .psg-nav button:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
   .psg-nav button:disabled{opacity:.4;cursor:default}
+  /* 지문: 본문은 양쪽 정렬, 제목·안내·버튼은 가운데 */
+  #screen-psglist .title, #screen-psglist .subtitle, .psg-group h3, .psg-tip{text-align:center}
+  #screen-passage .list-head{justify-content:center;text-align:center}
+  .psg-en, .psg-ko, .sen-ko{text-align:justify;text-justify:inter-word}
+  .psg-ko, .sen-ko{word-break:normal}   /* 해석은 음절 사이에서도 줄을 바꿔 양쪽 정렬 때 빈칸이 벌어지지 않게 */
+  .psg-kobtn{display:block;margin-left:auto;margin-right:auto}
+  /* 휴대폰: 글자를 한 단계 작게 */
+  @media(max-width:560px){
+    #screen-psglist .title{font-size:24px}
+    #screen-psglist .subtitle{font-size:13.5px}
+    .psg-group h3{font-size:14px}
+    #psgListBody .day-chip{padding:11px 4px}
+    #psgListBody .day-chip .d-num{font-size:12.5px !important;white-space:nowrap;letter-spacing:-.02em}
+    #psgTitle{font-size:18px}
+    .psg-tip{font-size:12px}
+    .psg-en{font-size:15.5px;line-height:1.75}
+    .sen-ko{font-size:13.5px;line-height:1.6;padding:8px 10px}
+    .psg-ko{font-size:14px;line-height:1.7;padding:12px 14px}
+    .psg-kobtn{font-size:13.5px;padding:9px 14px}
+    .psg-words-t{font-size:12px}
+    .psg-words .vw{font-size:14px}
+    .psg-words .vm{font-size:13.5px}
+    .psg-words .wn{font-size:11.5px}
+  }
 </style>
 </head>
 <body>
