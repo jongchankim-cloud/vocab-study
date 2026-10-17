@@ -498,7 +498,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-17-9";
+const APP_VER = "2026-10-17-10";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2106,6 +2106,7 @@ const $ = id => document.getElementById(id);
 const screens = ["login","home","day","mode","flash","quiz","result","list","psglist","passage"];
 function show(name){
   screens.forEach(s=>$("screen-"+s).classList.toggle("hidden", s!==name));
+  if(!["psglist","passage","login"].includes(name)) setPsgUrl();
   buildCrumb(name);
   window.scrollTo(0,0);
 }
@@ -3766,13 +3767,17 @@ async function doLogin(){
 
   btn.disabled=false; btn.textContent="입장하기";
   buildHome();
-  // 점수 사이트의 [📜 지문 공부] 탭에서 왔으면 (?go=passage) 지문 목록으로 바로 간다
+  // 점수 사이트의 [📜 지문 공부] 탭에서 왔거나 지문 화면에서 새로고침했으면 (?go=passage&g=시험&p=지문)
+  // 그 자리로 돌아간다
   const params=new URLSearchParams(location.search);
   if(params.get("go")==="passage"){
-    params.delete("go");
-    const q=params.toString();
-    history.replaceState(null,"",location.pathname+(q?"?"+q:"")+location.hash);
-    openPassageHome();
+    const g=params.get("g"), pid=params.get("p");
+    openPassageHome().then(()=>{
+      const list=(g&&psg.index&&psg.index[g])||[];
+      if(!list.length) return;
+      if(pid&&list.includes(pid)) openPassage(g,list.indexOf(pid));
+      else openPsgGroup(g);
+    });
   } else show("home");
 }
 function logout(){
@@ -3857,10 +3862,19 @@ function goBack(){ window.location.href="/score-system/"; }
    로그인한 학생 키로 창구 함수를 불러야만 받을 수 있다
    (supabase/migrations/20261017_1_지문.sql). */
 const psg={index:null, groups:[], view:null, group:null, list:[], i:0};
+// 지문 화면에 있는 동안 주소에 ?go=passage&g=시험&p=지문 을 남겨, 새로고침해도 같은 화면으로 돌아오게 한다.
+// g 가 없으면 주소에서 지운다 (단어 화면으로 갈 때)
+function setPsgUrl(g,pid){
+  const q=new URLSearchParams(location.search);
+  ["go","g","p"].forEach(k=>q.delete(k));
+  if(g!==undefined){ q.set("go","passage"); if(g) q.set("g",g); if(pid) q.set("p",pid); }
+  const t=q.toString(), url=location.pathname+(t?"?"+t:"")+location.hash;
+  if(url!==location.pathname+location.search+location.hash) history.replaceState(null,"",url);
+}
 // 단어 홈처럼 시험(그룹)마다 카드를 먼저 보여 주고, 고르면 그 시험의 지문 번호를 보여 준다
 async function openPassageHome(){
   const body=$("psgListBody"), grid=$("psgGroupGrid");
-  psg.view=null;
+  psg.view=null; setPsgUrl("");
   $("psgListTitle").textContent="지문 공부";
   $("psgListSub").textContent="시험 범위를 고르면 지문 목록이 나와요.";
   grid.innerHTML=""; grid.classList.add("hidden");
@@ -3902,7 +3916,7 @@ async function openPassageHome(){
 function openPsgGroup(g){
   const list=(psg.index&&psg.index[g])||[];
   if(!list.length){ openPassageHome(); return; }
-  psg.view=g;
+  psg.view=g; setPsgUrl(g);
   $("psgListTitle").textContent=g;
   $("psgListSub").textContent=`지문 ${list.length}개 · 번호를 누르면 원문이 열리고, 문장을 누르면 해석을 볼 수 있어요.`;
   $("psgGroupGrid").classList.add("hidden");
@@ -3921,7 +3935,7 @@ async function openPassage(group,i){
   const list=(psg.index&&psg.index[group])||[];
   if(i<0||i>=list.length) return;
   psg.group=group; psg.list=list; psg.i=i;
-  const pid=list[i];
+  const pid=list[i]; setPsgUrl(group,pid);
   $("psgTitle").textContent=(VOCAB_DATA[group]?dayLabel(group,pid):pid);
   $("psgCount").textContent=`${group} · ${i+1}/${list.length}`;
   $("psgPrev").disabled=i===0; $("psgNext").disabled=i===list.length-1;
