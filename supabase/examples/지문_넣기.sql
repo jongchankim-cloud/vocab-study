@@ -10,6 +10,9 @@
 -- · $$ … $$ 안에는 작은따옴표(')를 그대로 써도 된다.
 -- ============================================================================
 
+-- ⚠ 아래는 형식 예시다. 그대로 실행하면 진짜 1-2510-20 지문을 예시 문장으로 덮어쓴다.
+--    /* */ 를 지우기 전에 grp · pid · en · ko 를 실제 내용으로 바꿀 것.
+/*
 insert into public.passages (grp, pid, ord, en, ko) values
 (
   '용산 고1 2026 2학기 기말고사', '1-2510-20', 0,
@@ -18,6 +21,7 @@ insert into public.passages (grp, pid, ord, en, ko) values
 )
 on conflict (grp, pid) do update
   set ord = excluded.ord, en = excluded.en, ko = excluded.ko, updated_at = now();
+*/
 
 -- 지금 들어 있는 지문 보기
 -- select grp, pid, ord, left(en, 40) en, updated_at from public.passages order by grp, ord, pid;
