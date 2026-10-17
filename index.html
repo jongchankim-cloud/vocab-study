@@ -258,6 +258,11 @@
     font-family:inherit;font-size:14.5px;line-height:1.65;color:var(--ink);white-space:normal;word-break:keep-all}
   .psg-kobtn{margin-top:18px;border:1px solid var(--accent);color:var(--accent);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px}
   .psg-ko{margin-top:12px;padding:14px 16px;background:#f3f7f5;border-radius:12px;font-size:15px;line-height:1.75;white-space:pre-line;word-break:keep-all}
+  .psg-words-t{margin:22px 0 6px;font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--gold)}
+  .psg-words .vrow{align-items:flex-start;padding:11px 4px}
+  .psg-words .vw{font-size:15.5px;min-width:0;flex:0 0 42%}
+  .psg-words .vm{color:var(--ink);font-size:14.5px}
+  .psg-words .wn{display:block;font-size:12px;color:var(--ink-soft);margin-top:3px}
   .psg-nav{display:flex;gap:10px;margin-top:16px}
   .psg-nav button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px 10px;font-weight:700;font-size:14px}
   .psg-nav button:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
@@ -470,7 +475,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-17-4";
+const APP_VER = "2026-10-17-5";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3216,6 +3221,8 @@ async function openPassage(group,i){
     return;
   }
   const enS=splitSentences(data.en), koS=splitSentences(data.ko||"");
+  const words=Array.isArray(data.words)?data.words:[];
+  const label=data.ko?(words.length?"해석 · 단어 보기":"해석 전체 보기"):"단어 보기";
   const bySentence=enS && koS && enS.length===koS.length;
   const enHtml=bySentence
     ? enS.map((t,k)=>`<span class="sen" data-k="${k}">${esc(t)}</span><span class="sen-ko hidden" id="senKo${k}">${esc(koS[k])}</span>`).join(" ")
@@ -3223,7 +3230,12 @@ async function openPassage(group,i){
   body.innerHTML=
     (bySentence?`<p class="psg-tip">👆 영어 문장을 누르면 그 문장의 해석이 펼쳐져요.</p>`:"")+
     `<div class="psg-en">${enHtml}</div>`+
-    (data.ko?`<button class="psg-kobtn" id="psgKoBtn">해석 전체 보기 ▾</button><div class="psg-ko hidden" id="psgKo">${esc(data.ko)}</div>`:"");
+    // 해석 전체와 지문 단어는 [해석 · 단어 보기] 를 눌렀을 때만 보인다
+    ((data.ko||words.length)?`<button class="psg-kobtn" id="psgKoBtn">${label} ▾</button><div class="hidden" id="psgKo">`+
+      (data.ko?`<div class="psg-ko">${esc(data.ko)}</div>`:"")+
+      (words.length?`<div class="psg-words-t">WORDS &amp; EXPRESSIONS · ${words.length}개</div><div class="psg-words">${words.map(x=>
+        `<div class="vrow"><span class="vw">${esc(x.w)}</span><span class="vm">${esc(x.m)}${x.note?`<span class="wn">* ${esc(x.note)}</span>`:""}</span></div>`).join("")}</div>`:"")+
+      `</div>`:"");
   body.querySelectorAll(".sen").forEach(el=>el.onclick=()=>{
     el.classList.toggle("open");
     $("senKo"+el.dataset.k).classList.toggle("hidden");
@@ -3231,7 +3243,7 @@ async function openPassage(group,i){
   const kb=$("psgKoBtn");
   if(kb) kb.onclick=()=>{
     const open=$("psgKo").classList.toggle("hidden")===false;
-    kb.textContent=open?"해석 전체 접기 ▴":"해석 전체 보기 ▾";
+    kb.textContent=open?label.replace("보기","접기")+" ▴":label+" ▾";
   };
 }
 /* ❶❷… / ①②… 로 시작하는 문장 단위로 나눈다. 번호가 없으면 null */
