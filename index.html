@@ -245,9 +245,6 @@
   @keyframes pulse{50%{opacity:.3}}
 
   /* ---------- 지문 공부 ---------- */
-  .psg-group{margin-top:18px}
-  .psg-group:first-child{margin-top:0}
-  .psg-group h3{font-size:15px;font-weight:800;margin-bottom:10px}
   .psg-empty{font-size:14px;color:var(--ink-soft);line-height:1.7;text-align:center;padding:24px 8px}
   .psg-tip{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px}
   .psg-en{font-size:17.5px;line-height:1.85;white-space:pre-line;font-family:Georgia,"Times New Roman",serif;word-break:break-word}
@@ -268,7 +265,7 @@
   .psg-nav button:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
   .psg-nav button:disabled{opacity:.4;cursor:default}
   /* 지문: 본문은 양쪽 정렬, 제목·안내·버튼은 가운데 */
-  #screen-psglist .title, #screen-psglist .subtitle, .psg-group h3, .psg-tip{text-align:center}
+  #screen-psglist .title, #screen-psglist .subtitle, .psg-tip{text-align:center}
   #screen-passage .list-head{justify-content:center;text-align:center}
   .psg-en, .psg-ko, .sen-ko{text-align:justify;text-justify:inter-word}
   .psg-ko, .sen-ko{word-break:normal}   /* 해석은 음절 사이에서도 줄을 바꿔 양쪽 정렬 때 빈칸이 벌어지지 않게 */
@@ -277,7 +274,6 @@
   @media(max-width:560px){
     #screen-psglist .title{font-size:22px}
     #screen-psglist .subtitle{font-size:13px}
-    .psg-group h3{font-size:13.5px}
     #psgListBody .day-chip{padding:10px 4px}
     #psgListBody .day-chip .d-num{font-size:12px !important;white-space:nowrap;letter-spacing:-.02em}
     #psgTitle{font-size:17px}
@@ -450,9 +446,10 @@
 
   <!-- ============ SCREEN: 지문 목록 ============ -->
   <section id="screen-psglist" class="hidden">
-    <h1 class="title">지문 공부</h1>
-    <p class="subtitle">시험 범위의 지문을 골라 원문을 읽고, 문장을 누르면 해석을 볼 수 있어요.</p>
-    <div class="panel" id="psgListBody"></div>
+    <h1 class="title" id="psgListTitle">지문 공부</h1>
+    <p class="subtitle" id="psgListSub">시험 범위의 지문을 골라 원문을 읽고, 문장을 누르면 해석을 볼 수 있어요.</p>
+    <div class="grid" id="psgGroupGrid"></div>
+    <div class="panel hidden" id="psgListBody"></div>
   </section>
 
   <!-- ============ SCREEN: 지문 하나 ============ -->
@@ -501,7 +498,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-17-8";
+const APP_VER = "2026-10-17-9";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2120,7 +2117,8 @@ function buildCrumb(name){
   if(name==="home"||name==="login")return;
   add("홈",()=>show("home"));
   if(name==="psglist"||name==="passage"){
-    if(name==="passage") add("지문 목록",openPassageHome);
+    if(psg.view||name==="passage") add("지문 공부",()=>openPassageHome());
+    if(name==="passage") add(psg.group,()=>openPsgGroup(psg.group));
     if(c.lastChild) c.lastChild.remove();
     return;
   }
@@ -3858,9 +3856,15 @@ function goBack(){ window.location.href="/score-system/"; }
    원문·해석은 공개 저장소에 두지 않고 DB(passages 표)에만 둔다.
    로그인한 학생 키로 창구 함수를 불러야만 받을 수 있다
    (supabase/migrations/20261017_1_지문.sql). */
-const psg={index:null, group:null, list:[], i:0};
+const psg={index:null, groups:[], view:null, group:null, list:[], i:0};
+// 단어 홈처럼 시험(그룹)마다 카드를 먼저 보여 주고, 고르면 그 시험의 지문 번호를 보여 준다
 async function openPassageHome(){
-  const body=$("psgListBody");
+  const body=$("psgListBody"), grid=$("psgGroupGrid");
+  psg.view=null;
+  $("psgListTitle").textContent="지문 공부";
+  $("psgListSub").textContent="시험 범위를 고르면 지문 목록이 나와요.";
+  grid.innerHTML=""; grid.classList.add("hidden");
+  body.classList.remove("hidden");
   body.innerHTML=`<p class="psg-empty">지문 목록을 불러오는 중…</p>`;
   show("psglist");
   let idx=null, failed=false;
@@ -3879,23 +3883,39 @@ async function openPassageHome(){
   // 단어장과 같은 순서로, 그 뒤에 단어장에 없는 그룹
   const groups=[...GROUPS.filter(g=>idx[g]), ...Object.keys(idx).filter(g=>!GROUPS.includes(g))]
     .filter(g=>Array.isArray(idx[g]) && idx[g].length);
+  psg.groups=groups;
   if(!groups.length){
     body.innerHTML=`<p class="psg-empty">아직 준비된 지문이 없어요.<br>선생님이 지문을 올리면 여기에 나타나요.</p>`;
     return;
   }
-  body.innerHTML="";
+  body.classList.add("hidden"); body.innerHTML="";
+  grid.classList.remove("hidden");
   groups.forEach(g=>{
-    const box=document.createElement("div"); box.className="psg-group";
-    box.innerHTML=`<h3>${esc(g)} <span style="font-size:12.5px;color:var(--ink-soft);font-weight:600">지문 ${idx[g].length}개</span></h3>`;
-    const grid=document.createElement("div"); grid.className="day-grid"; grid.style.marginTop="0";
-    idx[g].forEach((pid,k)=>{
-      const b=document.createElement("button"); b.className="day-chip";
-      b.innerHTML=`<div class="d-num" style="font-size:14px">${esc(VOCAB_DATA[g]?dayLabel(g,pid):pid)}</div>`;
-      b.onclick=()=>openPassage(g,k);
-      grid.appendChild(b);
-    });
-    box.appendChild(grid); body.appendChild(box);
+    const card=document.createElement("button"); card.className="grade-card";
+    card.innerHTML=`<span class="g-eyebrow">지문</span>
+      <span class="g-name">${esc(g)}</span>
+      <span class="g-meta">지문 ${idx[g].length}개</span>`;
+    card.onclick=()=>openPsgGroup(g);
+    grid.appendChild(card);
   });
+}
+function openPsgGroup(g){
+  const list=(psg.index&&psg.index[g])||[];
+  if(!list.length){ openPassageHome(); return; }
+  psg.view=g;
+  $("psgListTitle").textContent=g;
+  $("psgListSub").textContent=`지문 ${list.length}개 · 번호를 누르면 원문이 열리고, 문장을 누르면 해석을 볼 수 있어요.`;
+  $("psgGroupGrid").classList.add("hidden");
+  const body=$("psgListBody"); body.classList.remove("hidden"); body.innerHTML="";
+  const grid=document.createElement("div"); grid.className="day-grid"; grid.style.marginTop="0";
+  list.forEach((pid,k)=>{
+    const b=document.createElement("button"); b.className="day-chip";
+    b.innerHTML=`<div class="d-num" style="font-size:14px">${esc(VOCAB_DATA[g]?dayLabel(g,pid):pid)}</div>`;
+    b.onclick=()=>openPassage(g,k);
+    grid.appendChild(b);
+  });
+  body.appendChild(grid);
+  show("psglist");
 }
 async function openPassage(group,i){
   const list=(psg.index&&psg.index[group])||[];
