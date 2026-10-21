@@ -498,7 +498,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-21-1";
+const APP_VER = "2026-10-21-2";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3743,6 +3743,12 @@ async function doLogin(){
   // 같은 출처(성적 사이트 도메인/vocab-study/)라서 로그인 쿠키가 자동으로 붙는다. PIN 은 저장하지 않는다.
   const res=await fetch("/api/parent-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,pin:phone})}).catch(()=>null);
   if(!res||!res.ok){
+    // 성적 명단에 없지만 단어 사이트에서 따로 허용한 학생은 기존 명단 확인으로 한 번 더 본다
+    const exc = res&&res.status===401 ? await verifyStudent(name,phone) : null;
+    if(exc&&exc.ok){
+      await enterApp(null,exc.student_key||null,exc.name||name,btn);
+      return;
+    }
     msg.innerHTML = res&&res.status===401
       ? "이름 또는 PIN이 올바르지 않아요.<br>성적 사이트와 같은 이름·PIN인지 확인하고, 계속 안 되면 선생님께 말씀해 주세요."
       : "서버에 연결하지 못했어요. 잠시 뒤에 다시 해 주세요.";
@@ -3751,13 +3757,12 @@ async function doLogin(){
     return;
   }
   const data=await res.json();
-  // 기록 저장용 학생 키는 명단 확인 쪽에서 받는다 (키가 없으면 기록을 저장하지 않는다)
-  const check=await verifyStudent(name,phone);
-  await enterApp(data,check.student_key||null,check.name||name,btn);
+  // 기록 저장용 학생 키(vocab_key)는 성적 사이트가 PIN 을 확인할 때 같이 받아 세션에 넣어 둔다
+  await enterApp(data,data.vocab_key||null,null,btn);
 }
 
 async function enterApp(data,key,name,btn){
-  student.key=key;
+  student.key=key;   // null 이면 그 접속의 기록은 저장되지 않는다
   student.name=(data&&data.student&&data.student.name)||name;
 
   await loadProgress();   // pull this student's data from Supabase
@@ -4006,7 +4011,7 @@ async function initSession(){
     loadingDiv.innerHTML=`<div style="margin-bottom:20px;">입장 중…</div>`;
     (document.querySelector(".wrap")||document.body).appendChild(loadingDiv);
     const data=await res.json();
-    await enterApp(data,null,null,null);
+    await enterApp(data,data.vocab_key||null,null,null);   // PIN 없이도 세션의 vocab_key 로 기록을 이어 쓴다
     return;
   }
   show("login");
