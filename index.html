@@ -498,7 +498,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-17-10";
+const APP_VER = "2026-10-21-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3740,19 +3740,25 @@ async function doLogin(){
 
   const btn=$("loginBtn"); btn.disabled=true; btn.textContent="확인 중…";
 
-  const check=await verifyStudent(name,phone);
-  if(!check.ok){
-    msg.innerHTML = check.reason==="not_listed"
+  // 같은 출처(성적 사이트 도메인/vocab-study/)라서 로그인 쿠키가 자동으로 붙는다. PIN 은 저장하지 않는다.
+  const res=await fetch("/api/parent-login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,pin:phone})}).catch(()=>null);
+  if(!res||!res.ok){
+    msg.innerHTML = res&&res.status===401
       ? "이름 또는 PIN이 올바르지 않아요.<br>성적 사이트와 같은 이름·PIN인지 확인하고, 계속 안 되면 선생님께 말씀해 주세요."
-      : "이름과 PIN 4자리를 확인해 주세요.";
+      : "서버에 연결하지 못했어요. 잠시 뒤에 다시 해 주세요.";
     btn.disabled=false; btn.textContent="입장하기";
     $("loginName").focus();
     return;
   }
+  const data=await res.json();
+  // 기록 저장용 학생 키는 명단 확인 쪽에서 받는다 (키가 없으면 기록을 저장하지 않는다)
+  const check=await verifyStudent(name,phone);
+  await enterApp(data,check.student_key||null,check.name||name,btn);
+}
 
-  btn.textContent="불러오는 중…";
-  student.key=check.student_key||null;   // null 이면 기록을 저장하지 않는다
-  student.name=check.name||name;
+async function enterApp(data,key,name,btn){
+  student.key=key;
+  student.name=(data&&data.student&&data.student.name)||name;
 
   await loadProgress();   // pull this student's data from Supabase
 
@@ -3765,7 +3771,7 @@ async function doLogin(){
   _lo[0].onclick=logout;
   _lo[1].onclick=goBack;
 
-  btn.disabled=false; btn.textContent="입장하기";
+  if(btn){ btn.disabled=false; btn.textContent="입장하기"; }
   buildHome();
   // 점수 사이트의 [📜 지문 공부] 탭에서 왔거나 지문 화면에서 새로고침했으면 (?go=passage&g=시험&p=지문)
   // 그 자리로 돌아간다
@@ -3785,7 +3791,7 @@ function logout(){
   student.key=null; student.name=null;
   $("whoami").classList.add("hidden");
   $("loginName").value=""; $("loginPhone").value="";
-  localStorage.removeItem("vocab_auth");   // 점수 사이트에서 넘어온 자동 로그인 정보도 지운다
+  fetch("/api/parent-login",{method:"DELETE"}).catch(()=>{});   // 서버 쿠키를 지운다
   show("login");
 }
 async function loadProgress(){
@@ -3987,35 +3993,28 @@ function splitSentences(t){
 $("psgPrev").onclick=()=>openPassage(psg.group,psg.i-1);
 $("psgNext").onclick=()=>openPassage(psg.group,psg.i+1);
 
-// 점수 사이트에서 이름·PIN 을 vocab_auth 로 넘겨 주면 자동 로그인한다.
-// 같은 origin(jongchankim-cloud.github.io)이라 localStorage 가 공유된다.
-function tryAutoLogin(){
-  try{
-    const stored=localStorage.getItem("vocab_auth");
-    if(stored){
-      const auth=JSON.parse(stored);
-      if(auth.name && auth.pin){
-        const sl=document.getElementById("screen-login"); if(sl) sl.style.display="none";
-        const loadingDiv=document.createElement("div");
-        loadingDiv.className="auto-login-loading";
-        loadingDiv.style.cssText="text-align:center;padding:60px 20px;color:#5a6b7b;font-size:16px;";
-        loadingDiv.innerHTML=`<div style="margin-bottom:20px;">입장 중…</div>`;
-        (document.querySelector(".wrap")||document.body).appendChild(loadingDiv);
-        $("loginName").value=auth.name;
-        $("loginPhone").value=auth.pin;
-        setTimeout(doLogin,300);
-        return true;
-      }
-    }
-  }catch(e){ console.warn("Auto login 실패",e); }
-  return false;
-}
-
-/* ---------- init ---------- */
-if(!tryAutoLogin()){
+/* 세션 확인 — 성적 사이트 도메인/vocab-study/ 로 서비스되므로 로그인 쿠키가 자동으로 붙는다.
+   200 이면 이미 로그인된 상태, 401 이면 로그인 폼을 보여 준다. PIN 은 어디에도 저장하지 않는다. */
+async function initSession(){
+  let res=null;
+  try{ res=await fetch("/api/parent-login",{method:"GET"}); }catch(e){ console.warn("세션 확인 실패",e); }
+  if(res&&res.ok){
+    const sl=document.getElementById("screen-login"); if(sl) sl.style.display="none";
+    const loadingDiv=document.createElement("div");
+    loadingDiv.className="auto-login-loading";
+    loadingDiv.style.cssText="text-align:center;padding:60px 20px;color:#5a6b7b;font-size:16px;";
+    loadingDiv.innerHTML=`<div style="margin-bottom:20px;">입장 중…</div>`;
+    (document.querySelector(".wrap")||document.body).appendChild(loadingDiv);
+    const data=await res.json();
+    await enterApp(data,null,null,null);
+    return;
+  }
   show("login");
   $("loginName").focus();
 }
+
+/* ---------- init ---------- */
+initSession();
 </script>
 </body>
 </html>
