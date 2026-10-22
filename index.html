@@ -7,24 +7,22 @@
 <link rel="stylesheet" href="/theme.css" />
 <style>
   :root{
-    --ink:#1c2733;
-    --ink-soft:#5a6b7b;
-    --paper:#f6f4ee;
-    --card:#ffffff;
-    --line:#dfe4ea;
-    --accent:#2f6f5e;       /* deep teal-green */
-    --accent-soft:#e3efe9;
-    --gold:#c08a2d;          /* marking accent */
-    --wrong:#c0492f;
-    --wrong-soft:#f7e6e1;
-    --shadow:0 6px 24px rgba(28,39,51,.08);
+    /* 색은 성적 사이트 공통 테마(/theme.css)의 변수만 쓴다 */
+    --ink:var(--navy);
+    --ink-soft:var(--gray);
+    --card:var(--white);
+    --line:var(--border);
+    --accent:var(--accent-ink);      /* 흰 바탕 위 강조 */
+    --accent-soft:var(--accent-light);
+    --gold:var(--accent-ink);        /* 표시 강조 */
+    --wrong:var(--red);
+    --wrong-soft:var(--red-light);
     --r:16px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{
     font-family:"Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
-    background:var(--paper);
     color:var(--ink);
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
@@ -37,7 +35,7 @@
   button{font-family:inherit;cursor:pointer;border:none;background:none}
   .hidden{display:none !important}
   /* 입장 확인이 끝날 때까지 로그인 폼 대신 이 화면을 덮는다 (탭 이동 때 폼이 깜빡이지 않게) */
-  #bootSplash{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:var(--paper);color:#5a6b7b;font-size:16px}
+  #bootSplash{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:var(--cream);color:var(--gray);font-size:16px}
 
   /* ---------- Header ---------- */
   .top-bar{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
@@ -56,7 +54,7 @@
     padding:22px 20px;text-align:left;transition:transform .15s ease,box-shadow .15s ease,border-color .15s;
     display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)
   }
-  .grade-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(47,111,94,.14)}
+  .grade-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(47,94,168,.14)}
   .grade-card .g-eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
   .grade-card .g-name{font-size:22px;font-weight:800}
   .grade-card .g-meta{font-size:13px;color:var(--ink-soft)}
@@ -68,13 +66,13 @@
   .day-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px;margin-top:16px}
   .day-chip{
     border:1px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center;
-    background:var(--paper);transition:.15s;font-weight:600
+    background:var(--cream);transition:.15s;font-weight:600
   }
   .day-chip:hover{border-color:var(--accent);background:var(--accent-soft)}
   .day-chip .d-num{font-size:16px}
   .day-chip .d-count{font-size:11px;color:var(--ink-soft);font-weight:400}
   .day-chip.all{background:var(--accent);color:#fff;border-color:var(--accent);grid-column:1/-1}
-  .day-chip.all:hover{background:#27604f}
+  .day-chip.all:hover{background:var(--navy-light)}
   .day-chip.all .d-count{color:rgba(255,255,255,.85)}   /* 초록 바탕에서도 읽히게 */
   .day-chip.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-soft)}
   .day-chip.on .d-num{color:var(--accent)}
@@ -85,12 +83,12 @@
   .pick-bar{
     position:sticky;bottom:12px;margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
     background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:12px 14px;
-    box-shadow:0 8px 24px rgba(28,39,51,.14)
+    box-shadow:0 8px 24px rgba(15,31,61,.14)
   }
   .pick-bar .pk-txt{font-size:14px;font-weight:700;color:var(--accent);flex:1;min-width:150px}
   .pick-bar button{border-radius:10px;padding:11px 18px;font-weight:800;font-size:14px}
   .pick-bar .pk-go{background:var(--accent);color:#fff}
-  .pick-bar .pk-go:hover{background:#27604f}
+  .pick-bar .pk-go:hover{background:var(--navy-light)}
   .pick-bar .pk-clear{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-weight:700}
 
   /* ---------- Mode menu ---------- */
@@ -140,13 +138,13 @@
   #quizBody .fav-star{top:-2px;right:2px;padding:6px}
   .fav-star.on{color:var(--gold)}
   .fc-back .fav-star{color:rgba(255,255,255,.45)}
-  .fc-back .fav-star.on{color:#ffd97a}
+  .fc-back .fav-star.on{color:var(--accent)}
 
   .nav-row{display:flex;gap:10px}
   .nav-row button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:14px;font-weight:700;font-size:15px;transition:.15s}
   .nav-row button:hover{border-color:var(--accent);background:var(--accent-soft)}
   .nav-row button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .nav-row button.primary:hover{background:#27604f}
+  .nav-row button.primary:hover{background:var(--navy-light)}
   .nav-row button:disabled{opacity:.4;cursor:not-allowed}
 
   /* ---------- Quiz ---------- */
@@ -171,9 +169,9 @@
     font-size:18px;font-family:inherit;background:var(--card);transition:.15s
   }
   .ans-row input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
-  .ans-row input:disabled{background:var(--paper);color:var(--ink-soft)}
+  .ans-row input:disabled{background:var(--cream);color:var(--ink-soft)}
   .ans-row button{background:var(--accent);color:#fff;border-radius:12px;padding:0 24px;font-weight:800;font-size:16px;flex:none}
-  .ans-row button:hover{background:#27604f}
+  .ans-row button:hover{background:var(--navy-light)}
   .ans-row button:disabled{opacity:.45;cursor:default}
   .ans-tip{font-size:12px;color:var(--ink-soft);margin-bottom:4px;line-height:1.6}
 
@@ -185,21 +183,21 @@
   .ans-feed.ok .fb-t{color:var(--accent)}
   .ans-feed.no{border-color:var(--wrong);background:var(--wrong-soft)}
   .ans-feed.no .fb-t{color:var(--wrong)}
-  .ans-feed.maybe{border-color:var(--gold);background:#fbf4e4}
-  .ans-feed.maybe .fb-t{color:#8a6417}
+  .ans-feed.maybe{border-color:var(--orange);background:var(--orange-light)}
+  .ans-feed.maybe .fb-t{color:var(--orange)}
   .fb-btns{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
   .fb-btns button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 15px;font-weight:700;font-size:13.5px;transition:.12s}
   .fb-btns button:hover{border-color:var(--accent);color:var(--accent)}
   .fb-btns button.solid{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .fb-btns button.solid:hover{background:#27604f;color:#fff}
+  .fb-btns button.solid:hover{background:var(--navy-light);color:#fff}
   .fb-btns button.ghost{background:transparent;border-style:dashed;color:var(--ink-soft);font-weight:600}
   .fb-btns button:disabled{opacity:.5;cursor:default}
   .sim{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:11.5px;color:var(--ink-soft)}
-  .sim .track{flex:1;height:6px;border-radius:99px;background:rgba(28,39,51,.1);overflow:hidden}
+  .sim .track{flex:1;height:6px;border-radius:99px;background:rgba(15,31,61,.1);overflow:hidden}
   .sim .track i{display:block;height:100%;border-radius:99px;background:currentColor;transition:width .4s}
   .ans-feed.ok .sim{color:var(--accent)}
   .ans-feed.no .sim{color:var(--wrong)}
-  .ans-feed.maybe .sim{color:var(--gold)}
+  .ans-feed.maybe .sim{color:var(--orange)}
 
   /* ---------- Result ---------- */
   .result{text-align:center;padding:18px 0}
@@ -213,7 +211,7 @@
   /* ---------- List view (vocab list / favorites / wrong) ---------- */
   .list-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
   .list-head h2{font-size:20px;font-weight:800}
-  .list-head .count{font-size:13px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--line);border-radius:99px;padding:3px 12px}
+  .list-head .count{font-size:13px;color:var(--ink-soft);background:var(--cream);border:1px solid var(--line);border-radius:99px;padding:3px 12px}
   .vrow{
     display:flex;align-items:center;gap:14px;padding:14px 8px;border-bottom:1px solid var(--line)
   }
@@ -235,17 +233,17 @@
   .fld span{font-size:13px;font-weight:700;color:var(--ink-soft)}
   .fld input{
     border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:17px;font-family:inherit;
-    background:var(--paper);transition:.15s;width:100%
+    background:var(--cream);transition:.15s;width:100%
   }
   .fld input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
   .login-go{background:var(--accent);color:#fff;border-radius:12px;padding:15px;font-weight:800;font-size:16px;transition:.15s}
-  .login-go:hover{background:#27604f}
+  .login-go:hover{background:var(--navy-light)}
   .login-go:disabled{opacity:.6;cursor:wait}
   .login-note{font-size:13px;text-align:center;min-height:18px;color:var(--wrong);font-weight:600}
   .login-fine{font-size:12px;color:var(--ink-soft);text-align:center;line-height:1.5}
   .who{font-size:13px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:8px}
   .who .logout{font-size:12px;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-weight:400}
-  .sync-dot{width:7px;height:7px;border-radius:99px;background:#c9cf57;display:inline-block}
+  .sync-dot{width:7px;height:7px;border-radius:99px;background:var(--accent);display:inline-block}
   .sync-dot.ok{background:var(--accent)}
   .sync-dot.busy{background:var(--gold);animation:pulse 1s infinite}
   @keyframes pulse{50%{opacity:.3}}
@@ -257,10 +255,10 @@
   .sen{cursor:pointer;border-radius:4px;transition:background .15s}
   .sen:hover{background:var(--accent-soft)}
   .sen.open{background:var(--accent-soft);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
-  .sen-ko{display:block;margin:6px 0 10px;padding:9px 12px;border-left:3px solid var(--accent);background:#f3f7f5;
+  .sen-ko{display:block;margin:6px 0 10px;padding:9px 12px;border-left:3px solid var(--accent);background:var(--accent-light);
     font-family:inherit;font-size:14.5px;line-height:1.65;color:var(--ink);white-space:normal;word-break:keep-all}
   .psg-kobtn{margin-top:18px;border:1px solid var(--accent);color:var(--accent);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px}
-  .psg-ko{margin-top:12px;padding:14px 16px;background:#f3f7f5;border-radius:12px;font-size:15px;line-height:1.75;white-space:pre-line;word-break:keep-all}
+  .psg-ko{margin-top:12px;padding:14px 16px;background:var(--accent-light);border-radius:12px;font-size:15px;line-height:1.75;white-space:pre-line;word-break:keep-all}
   .psg-words-t{margin:22px 0 6px;font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--gold)}
   .psg-words .vrow{align-items:flex-start;padding:11px 4px}
   .psg-words .vw{font-size:15.5px;min-width:0;flex:0 0 42%}
@@ -516,7 +514,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-22-3";
+const APP_VER = "2026-10-22-4";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
