@@ -29,7 +29,10 @@
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
-  /* theme.css 의 body 는 가운데 정렬 flex 라서, 폭은 이 래퍼에서 잡는다 */
+  /* theme.css 의 body 는 가운데 정렬 flex 라서, 폭은 이 래퍼에서 잡는다.
+     body 가 높이 100% 로 고정돼 있어서, 헤더·래퍼가 세로로 줄어들지 않게 한다 (헤더가 잘리던 문제) */
+  header,.wrap{flex-shrink:0}
+  a.tab-btn{text-decoration:none}   /* 점수 확인 링크의 밑줄 제거 */
   .wrap{width:100%;max-width:880px;margin:0 auto;padding:24px 18px 80px;min-height:100%}
   button{font-family:inherit;cursor:pointer;border:none;background:none}
   .hidden{display:none !important}
@@ -513,7 +516,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-22-2";
+const APP_VER = "2026-10-22-3";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
