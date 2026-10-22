@@ -503,7 +503,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-21-4";
+const APP_VER = "2026-10-22-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3775,10 +3775,8 @@ async function enterApp(data,key,name,btn){
   // header identity
   const who=$("whoami");
   who.classList.remove("hidden");
-  who.innerHTML=`<span class="sync-dot ok"></span>${student.name} 님 <span class="logout">로그아웃</span> · <span class="logout" style="color:var(--accent)">📊 점수 확인</span>`;
-  const _lo=who.querySelectorAll(".logout");
-  _lo[0].onclick=logout;
-  _lo[1].onclick=goBack;
+  who.innerHTML=`<span class="sync-dot ok"></span>${student.name} 님 <span class="logout" id="logoutBtn">로그아웃</span> · <a class="logout" href="/" style="color:var(--accent)">📊 점수 확인</a>`;
+  $("logoutBtn").onclick=logout;
 
   if(btn){ btn.disabled=false; btn.textContent="입장하기"; }
   buildHome();
@@ -3795,14 +3793,11 @@ async function enterApp(data,key,name,btn){
     });
   } else show("home");
 }
-function logout(){
+async function logout(){
   favorites.clear(); wrongStore.clear(); wrongOk.clear(); aliasOwn.clear(); aliasGlobal.clear(); aliasAsked.clear();
   student.key=null; student.name=null;
-  $("whoami").classList.add("hidden");
-  $("loginName").value=""; $("loginPhone").value="";
-  fetch("/api/parent-login",{method:"DELETE"}).catch(()=>{});   // 서버 쿠키를 지운다
-  show("login");
-  if(inFrame) window.parent.postMessage({type:"vocab-logout"}, location.origin);   // 점수 화면도 로그아웃 상태로
+  try{ await fetch("/api/parent-login",{method:"DELETE"}); }catch(e){ console.warn("로그아웃 실패",e); }   // 서버 쿠키를 지운다
+  window.location.href="/";   // 성적 사이트로 돌아간다
 }
 async function loadProgress(){
   if(!sb||!student.key)return;
@@ -3870,14 +3865,6 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function dedupe(arr){const seen=new Set();return arr.filter(x=>{const k=x.group+"|"+x.day+"|"+x.w;if(seen.has(k))return false;seen.add(k);return true;});}
 
 /* ---------- 점수 사이트 연동 ---------- */
-// 점수 확인 사이트로 돌아간다. 같은 도메인이라 절대경로로 고정한다
-/* 점수 사이트 안(iframe)에서 열렸으면 점수 화면을 다시 열지 않고 상위 창에 알린다 */
-const inFrame = window.self !== window.top;
-function goBack(){
-  if(inFrame){ window.parent.postMessage({type:"vocab-back"}, location.origin); return; }
-  window.location.href="/score-system/";
-}
-
 /* ---------- 지문 공부 ----------
    원문·해석은 공개 저장소에 두지 않고 DB(passages 표)에만 둔다.
    로그인한 학생 키로 창구 함수를 불러야만 받을 수 있다
@@ -4024,19 +4011,6 @@ async function initSession(){
   }finally{
     $("bootSplash").classList.add("hidden");   // 로그인 폼이든 홈이든 준비되면 로딩 화면을 걷는다
   }
-}
-
-/* 점수 사이트(상위 창)와 주고받는 메시지: 탭 전환 요청을 받고, 화면 높이를 알려 준다 */
-window.addEventListener("message",e=>{
-  if(!inFrame||e.source!==window.parent||e.origin!==location.origin||!e.data) return;
-  if(e.data.type==="vocab-tab" && student.name){
-    if(e.data.tab==="passage") openPassageHome(); else show("home");
-  }
-});
-if(inFrame){
-  const sendHeight=()=>window.parent.postMessage({type:"vocab-height",h:document.documentElement.scrollHeight},location.origin);
-  new ResizeObserver(sendHeight).observe(document.body);
-  sendHeight();
 }
 
 /* ---------- init ---------- */
