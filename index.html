@@ -38,10 +38,9 @@
   #bootSplash{position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;background:var(--cream);color:var(--gray);font-size:16px}
 
   /* ---------- Header ---------- */
-  .top-bar{display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
-  .crumb{font-size:13px;color:var(--ink-soft);margin-left:auto;display:flex;gap:8px;align-items:center}
-  .crumb button{color:var(--ink-soft);font-size:13px;text-decoration:underline;text-underline-offset:3px}
-  .crumb button:hover{color:var(--accent)}
+  /* 헤더 아래 이름·로그아웃 줄 (theme.css 헤더 안) */
+  #whoami{justify-content:center;margin-top:10px;font-size:13px;color:var(--accent);font-weight:400}
+  #whoami .logout{text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 
   h1.title{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:6px}
   .subtitle{color:var(--ink-soft);font-size:15px;margin-bottom:24px}
@@ -299,6 +298,7 @@
 <!-- 성적 사이트와 같은 헤더·탭 (theme.css). 탭은 입장 뒤에 보인다 -->
 <header>
   <h1>영어과 <span>단어 공부</span></h1>
+  <div id="whoami" class="hidden"></div>
   <div class="tab-nav" id="tabNav">
     <a class="tab-btn" href="/">점수 확인</a>
     <button class="tab-btn active" id="tabVocab">단어 공부</button>
@@ -308,10 +308,6 @@
 
 <div class="wrap">
 
-  <div class="top-bar">
-    <nav class="crumb" id="crumb"></nav>
-    <span id="whoami" class="who hidden"></span>
-  </div>
 
   <!-- 입장 확인 중 화면 (initSession 이 끝나면 숨긴다) -->
   <div id="bootSplash"><div>📚 불러오는 중…</div></div>
@@ -514,7 +510,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-22-5";
+const APP_VER = "2026-10-22-6";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2123,31 +2119,9 @@ const screens = ["login","home","day","mode","flash","quiz","result","list","psg
 function show(name){
   screens.forEach(s=>$("screen-"+s).classList.toggle("hidden", s!==name));
   if(!["psglist","passage","login"].includes(name)) setPsgUrl();
-  buildCrumb(name);
   window.scrollTo(0,0);
 }
 
-function buildCrumb(name){
-  const c=$("crumb"); c.innerHTML="";
-  const add=(txt,fn)=>{const b=document.createElement("button");b.textContent=txt;b.onclick=fn;c.appendChild(b);
-    const sep=document.createElement("span");sep.textContent="›";sep.style.color="var(--line)";c.appendChild(sep);};
-  if(name==="home"||name==="login")return;
-  add("홈",()=>show("home"));
-  if(name==="psglist"||name==="passage"){
-    if(psg.view||name==="passage") add("지문 공부",()=>openPassageHome());
-    if(name==="passage") add(psg.group,()=>openPsgGroup(psg.group));
-    if(c.lastChild) c.lastChild.remove();
-    return;
-  }
-  if(state.group){
-    if(name==="day"){c.lastChild.remove();return;}
-    add(state.group,()=>openDayScreen(state.group));
-  }
-  if(["flash","quiz","result","list"].includes(name)){
-    add(state.scopeLabel||"학습",()=>show("mode"));
-  }
-  if(c.lastChild) c.lastChild.remove(); // drop trailing separator
-}
 
 /* 범위(챕터/DAY) 표시 이름 — 키가 숫자면 "DAY 3", 아니면 적은 그대로 */
 function unitName(group){ return (VOCAB_DATA[group]||{}).unit || "DAY"; }
@@ -3786,7 +3760,7 @@ async function enterApp(data,key,name,btn){
   // header identity
   const who=$("whoami");
   who.classList.remove("hidden");
-  who.innerHTML=`<span class="logout" id="logoutBtn">로그아웃</span>`;   // 이름·점수 확인은 상단 탭이 맡는다
+  who.innerHTML=`${student.name} 님 · <span class="logout" id="logoutBtn">로그아웃</span>`;
   $("logoutBtn").onclick=logout;
 
   if(btn){ btn.disabled=false; btn.textContent="입장하기"; }
