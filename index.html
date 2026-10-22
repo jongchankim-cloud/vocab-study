@@ -12,9 +12,7 @@
     --ink-soft:var(--gray);
     --card:var(--white);
     --line:var(--border);
-    --accent:var(--accent-ink);      /* 흰 바탕 위 강조 */
     --accent-soft:var(--accent-light);
-    --gold:var(--accent-ink);        /* 표시 강조 */
     --wrong:var(--red);
     --wrong-soft:var(--red-light);
     --r:16px;
@@ -53,8 +51,8 @@
     padding:22px 20px;text-align:left;transition:transform .15s ease,box-shadow .15s ease,border-color .15s;
     display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)
   }
-  .grade-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 10px 30px rgba(47,94,168,.14)}
-  .grade-card .g-eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700}
+  .grade-card:hover{transform:translateY(-3px);border-color:var(--accent-ink);box-shadow:0 10px 30px rgba(47,94,168,.14)}
+  .grade-card .g-eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:700}
   .grade-card .g-name{font-size:22px;font-weight:800}
   .grade-card .g-meta{font-size:13px;color:var(--ink-soft)}
   .grade-card.empty{opacity:.55}
@@ -67,26 +65,26 @@
     border:1px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center;
     background:var(--cream);transition:.15s;font-weight:600
   }
-  .day-chip:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .day-chip:hover{border-color:var(--accent-ink);background:var(--accent-soft)}
   .day-chip .d-num{font-size:16px}
   .day-chip .d-count{font-size:11px;color:var(--ink-soft);font-weight:400}
-  .day-chip.all{background:var(--accent);color:#fff;border-color:var(--accent);grid-column:1/-1}
+  .day-chip.all{background:var(--accent-ink);color:#fff;border-color:var(--accent-ink);grid-column:1/-1}
   .day-chip.all:hover{background:var(--navy-light)}
   .day-chip.all .d-count{color:rgba(255,255,255,.85)}   /* 초록 바탕에서도 읽히게 */
-  .day-chip.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-soft)}
-  .day-chip.on .d-num{color:var(--accent)}
-  .day-chip .d-tick{display:none;position:absolute;top:5px;right:7px;font-size:12px;color:var(--accent);font-weight:800}
+  .day-chip.on{border-color:var(--accent-ink);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-soft)}
+  .day-chip.on .d-num{color:var(--accent-ink)}
+  .day-chip .d-tick{display:none;position:absolute;top:5px;right:7px;font-size:12px;color:var(--accent-ink);font-weight:800}
   .day-chip{position:relative}
   .day-chip.on .d-tick{display:block}
 
   .pick-bar{
     position:sticky;bottom:12px;margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-    background:var(--card);border:1px solid var(--accent);border-radius:14px;padding:12px 14px;
+    background:var(--card);border:1px solid var(--accent-ink);border-radius:14px;padding:12px 14px;
     box-shadow:0 8px 24px rgba(15,31,61,.14)
   }
-  .pick-bar .pk-txt{font-size:14px;font-weight:700;color:var(--accent);flex:1;min-width:150px}
+  .pick-bar .pk-txt{font-size:14px;font-weight:700;color:var(--accent-ink);flex:1;min-width:150px}
   .pick-bar button{border-radius:10px;padding:11px 18px;font-weight:800;font-size:14px}
-  .pick-bar .pk-go{background:var(--accent);color:#fff}
+  .pick-bar .pk-go{background:var(--accent-ink);color:#fff}
   .pick-bar .pk-go:hover{background:var(--navy-light)}
   .pick-bar .pk-clear{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-weight:700}
 
@@ -97,7 +95,7 @@
     background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;text-align:left;
     box-shadow:var(--shadow);transition:.15s;display:flex;gap:14px;align-items:center
   }
-  .mode-btn:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .mode-btn:hover{border-color:var(--accent-ink);transform:translateY(-2px)}
   .mode-btn .ic{font-size:24px;width:40px;height:40px;display:grid;place-items:center;background:var(--accent-soft);border-radius:10px;flex:none}
   .mode-btn .m-title{font-weight:700;font-size:16px}
   .mode-btn .m-sub{font-size:12px;color:var(--ink-soft)}
@@ -106,14 +104,14 @@
 
   .scope-banner{
     background:var(--accent-soft);border-radius:12px;padding:12px 16px;margin-top:8px;
-    font-size:14px;color:var(--accent);font-weight:600;display:flex;justify-content:space-between;align-items:center
+    font-size:14px;color:var(--accent-ink);font-weight:600;display:flex;justify-content:space-between;align-items:center
   }
-  .scope-banner .chg{font-size:12px;text-decoration:underline;color:var(--accent);cursor:pointer}
+  .scope-banner .chg{font-size:12px;text-decoration:underline;color:var(--accent-ink);cursor:pointer}
 
   /* ---------- Flashcard ---------- */
   .stage{margin-top:18px}
   .progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:18px}
-  .progress > i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+  .progress > i{display:block;height:100%;background:var(--accent-ink);width:0;transition:width .3s}
   .counter{text-align:center;font-size:13px;color:var(--ink-soft);margin-bottom:12px}
 
   .flashcard{
@@ -126,7 +124,7 @@
     background:var(--card);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:28px;text-align:center
   }
-  .fc-back{transform:rotateY(180deg);background:var(--accent);border-color:var(--accent);color:#fff}
+  .fc-back{transform:rotateY(180deg);background:var(--accent-ink);border-color:var(--accent-ink);color:#fff}
   .fc-word{font-size:38px;font-weight:800;letter-spacing:-.02em}
   .fc-pos{display:inline-block;margin-top:14px;font-size:13px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 12px}
   .fc-mean{font-size:26px;font-weight:700;line-height:1.4}
@@ -135,14 +133,14 @@
   .fav-star{position:absolute;top:14px;right:16px;font-size:24px;color:var(--line);transition:.15s;z-index:3;cursor:pointer}
   #quizBody{position:relative}
   #quizBody .fav-star{top:-2px;right:2px;padding:6px}
-  .fav-star.on{color:var(--gold)}
+  .fav-star.on{color:var(--accent-ink)}
   .fc-back .fav-star{color:rgba(255,255,255,.45)}
-  .fc-back .fav-star.on{color:var(--accent)}
+  .fc-back .fav-star.on{color:var(--accent-ink)}
 
   .nav-row{display:flex;gap:10px}
   .nav-row button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:14px;font-weight:700;font-size:15px;transition:.15s}
-  .nav-row button:hover{border-color:var(--accent);background:var(--accent-soft)}
-  .nav-row button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .nav-row button:hover{border-color:var(--accent-ink);background:var(--accent-soft)}
+  .nav-row button.primary{background:var(--accent-ink);color:#fff;border-color:var(--accent-ink)}
   .nav-row button.primary:hover{background:var(--navy-light)}
   .nav-row button:disabled{opacity:.4;cursor:not-allowed}
 
@@ -153,13 +151,13 @@
     display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);
     border-radius:12px;padding:16px 18px;margin-bottom:10px;font-size:16px;transition:.12s
   }
-  .opt:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
+  .opt:hover:not(:disabled){border-color:var(--accent-ink);background:var(--accent-soft)}
   .opt:disabled{cursor:default}
-  .opt.correct{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .opt.correct{border-color:var(--accent-ink);background:var(--accent-soft);color:var(--accent-ink);font-weight:700}
   .opt.wrong{border-color:var(--wrong);background:var(--wrong-soft);color:var(--wrong)}
   .quiz-foot{margin-top:8px;display:flex;gap:10px;align-items:center}
   .quiz-foot .score{font-size:14px;color:var(--ink-soft)}
-  .quiz-foot button{margin-left:auto;background:var(--accent);color:#fff;border-radius:12px;padding:12px 22px;font-weight:700}
+  .quiz-foot button{margin-left:auto;background:var(--accent-ink);color:#fff;border-radius:12px;padding:12px 22px;font-weight:700}
 
   /* ---------- 주관식(서술형) 답안 ---------- */
   .ans-row{display:flex;gap:10px;margin-bottom:12px}
@@ -167,9 +165,9 @@
     flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:15px 16px;
     font-size:18px;font-family:inherit;background:var(--card);transition:.15s
   }
-  .ans-row input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .ans-row input:focus{outline:none;border-color:var(--accent-ink);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
   .ans-row input:disabled{background:var(--cream);color:var(--ink-soft)}
-  .ans-row button{background:var(--accent);color:#fff;border-radius:12px;padding:0 24px;font-weight:800;font-size:16px;flex:none}
+  .ans-row button{background:var(--accent-ink);color:#fff;border-radius:12px;padding:0 24px;font-weight:800;font-size:16px;flex:none}
   .ans-row button:hover{background:var(--navy-light)}
   .ans-row button:disabled{opacity:.45;cursor:default}
   .ans-tip{font-size:12px;color:var(--ink-soft);margin-bottom:4px;line-height:1.6}
@@ -178,33 +176,33 @@
   .ans-feed .fb-t{display:block;font-size:17px;font-weight:800;margin-bottom:5px}
   .ans-feed .fb-line{color:var(--ink);line-height:1.65}
   .ans-feed .fb-line b{font-weight:800}
-  .ans-feed.ok{border-color:var(--accent);background:var(--accent-soft)}
-  .ans-feed.ok .fb-t{color:var(--accent)}
+  .ans-feed.ok{border-color:var(--accent-ink);background:var(--accent-soft)}
+  .ans-feed.ok .fb-t{color:var(--accent-ink)}
   .ans-feed.no{border-color:var(--wrong);background:var(--wrong-soft)}
   .ans-feed.no .fb-t{color:var(--wrong)}
   .ans-feed.maybe{border-color:var(--orange);background:var(--orange-light)}
   .ans-feed.maybe .fb-t{color:var(--orange)}
   .fb-btns{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
   .fb-btns button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 15px;font-weight:700;font-size:13.5px;transition:.12s}
-  .fb-btns button:hover{border-color:var(--accent);color:var(--accent)}
-  .fb-btns button.solid{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .fb-btns button:hover{border-color:var(--accent-ink);color:var(--accent-ink)}
+  .fb-btns button.solid{background:var(--accent-ink);color:#fff;border-color:var(--accent-ink)}
   .fb-btns button.solid:hover{background:var(--navy-light);color:#fff}
   .fb-btns button.ghost{background:transparent;border-style:dashed;color:var(--ink-soft);font-weight:600}
   .fb-btns button:disabled{opacity:.5;cursor:default}
   .sim{display:flex;align-items:center;gap:9px;margin-top:11px;font-size:11.5px;color:var(--ink-soft)}
   .sim .track{flex:1;height:6px;border-radius:99px;background:rgba(15,31,61,.1);overflow:hidden}
   .sim .track i{display:block;height:100%;border-radius:99px;background:currentColor;transition:width .4s}
-  .ans-feed.ok .sim{color:var(--accent)}
+  .ans-feed.ok .sim{color:var(--accent-ink)}
   .ans-feed.no .sim{color:var(--wrong)}
   .ans-feed.maybe .sim{color:var(--orange)}
 
   /* ---------- Result ---------- */
   .result{text-align:center;padding:18px 0}
-  .result .big{font-size:52px;font-weight:800;color:var(--accent)}
+  .result .big{font-size:52px;font-weight:800;color:var(--accent-ink)}
   .result .lbl{color:var(--ink-soft);margin-bottom:20px}
   .result .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
   .result .row button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:14px 20px;font-weight:700}
-  .result .row button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .result .row button.primary{background:var(--accent-ink);color:#fff;border-color:var(--accent-ink)}
   .result .row button.warn{background:var(--wrong);color:#fff;border-color:var(--wrong)}
 
   /* ---------- List view (vocab list / favorites / wrong) ---------- */
@@ -219,7 +217,7 @@
   .vrow .vp{font-size:12px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:2px 9px;flex:none}
   .vrow .vm{color:var(--ink-soft);flex:1}
   .vrow .vstar{font-size:22px;color:var(--line)}
-  .vrow .vstar.on{color:var(--gold)}
+  .vrow .vstar.on{color:var(--accent-ink)}
   .empty-state{text-align:center;padding:48px 20px;color:var(--ink-soft)}
   .empty-state .e-ic{font-size:40px;margin-bottom:10px}
 
@@ -234,17 +232,17 @@
     border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:17px;font-family:inherit;
     background:var(--cream);transition:.15s;width:100%
   }
-  .fld input:focus{outline:none;border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
-  .login-go{background:var(--accent);color:#fff;border-radius:12px;padding:15px;font-weight:800;font-size:16px;transition:.15s}
+  .fld input:focus{outline:none;border-color:var(--accent-ink);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .login-go{background:var(--accent-ink);color:#fff;border-radius:12px;padding:15px;font-weight:800;font-size:16px;transition:.15s}
   .login-go:hover{background:var(--navy-light)}
   .login-go:disabled{opacity:.6;cursor:wait}
   .login-note{font-size:13px;text-align:center;min-height:18px;color:var(--wrong);font-weight:600}
   .login-fine{font-size:12px;color:var(--ink-soft);text-align:center;line-height:1.5}
-  .who{font-size:13px;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:8px}
+  .who{font-size:13px;color:var(--accent-ink);font-weight:700;display:flex;align-items:center;gap:8px}
   .who .logout{font-size:12px;color:var(--ink-soft);text-decoration:underline;cursor:pointer;font-weight:400}
-  .sync-dot{width:7px;height:7px;border-radius:99px;background:var(--accent);display:inline-block}
-  .sync-dot.ok{background:var(--accent)}
-  .sync-dot.busy{background:var(--gold);animation:pulse 1s infinite}
+  .sync-dot{width:7px;height:7px;border-radius:99px;background:var(--accent-ink);display:inline-block}
+  .sync-dot.ok{background:var(--accent-ink)}
+  .sync-dot.busy{background:var(--accent-ink);animation:pulse 1s infinite}
   @keyframes pulse{50%{opacity:.3}}
 
   /* ---------- 지문 공부 ---------- */
@@ -253,19 +251,19 @@
   .psg-en{font-size:17.5px;line-height:1.85;white-space:pre-line;font-family:Georgia,"Times New Roman",serif;word-break:break-word}
   .sen{cursor:pointer;border-radius:4px;transition:background .15s}
   .sen:hover{background:var(--accent-soft)}
-  .sen.open{background:var(--accent-soft);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
-  .sen-ko{display:block;margin:6px 0 10px;padding:9px 12px;border-left:3px solid var(--accent);background:var(--accent-light);
+  .sen.open{background:var(--accent-soft);text-decoration:underline;text-decoration-color:var(--accent-ink);text-underline-offset:4px}
+  .sen-ko{display:block;margin:6px 0 10px;padding:9px 12px;border-left:3px solid var(--accent-ink);background:var(--accent-light);
     font-family:inherit;font-size:14.5px;line-height:1.65;color:var(--ink);white-space:normal;word-break:keep-all}
-  .psg-kobtn{margin-top:18px;border:1px solid var(--accent);color:var(--accent);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px}
+  .psg-kobtn{margin-top:18px;border:1px solid var(--accent-ink);color:var(--accent-ink);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px}
   .psg-ko{margin-top:12px;padding:14px 16px;background:var(--accent-light);border-radius:12px;font-size:15px;line-height:1.75;white-space:pre-line;word-break:keep-all}
-  .psg-words-t{margin:22px 0 6px;font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--gold)}
+  .psg-words-t{margin:22px 0 6px;font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--accent-ink)}
   .psg-words .vrow{align-items:flex-start;padding:11px 4px}
   .psg-words .vw{font-size:15.5px;min-width:0;flex:0 0 42%}
   .psg-words .vm{color:var(--ink);font-size:14.5px}
   .psg-words .wn{display:block;font-size:12px;color:var(--ink-soft);margin-top:3px}
   .psg-nav{display:flex;gap:10px;margin-top:16px}
   .psg-nav button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px 10px;font-weight:700;font-size:14px}
-  .psg-nav button:hover:not(:disabled){border-color:var(--accent);background:var(--accent-soft)}
+  .psg-nav button:hover:not(:disabled){border-color:var(--accent-ink);background:var(--accent-soft)}
   .psg-nav button:disabled{opacity:.4;cursor:default}
   /* 지문: 본문은 양쪽 정렬, 제목·안내·버튼은 가운데 */
   #screen-psglist .title, #screen-psglist .subtitle, .psg-tip{text-align:center}
@@ -448,8 +446,8 @@
         <span class="count" id="listCount"></span>
       </div>
       <div id="listActions" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-        <button id="listQuizBtn" style="background:var(--accent);color:#fff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">✏️ 객관식 재시험</button>
-        <button id="listTypeBtn" style="border:1px solid var(--accent);color:var(--accent);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">⌨️ 주관식 재시험</button>
+        <button id="listQuizBtn" style="background:var(--accent-ink);color:#fff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">✏️ 객관식 재시험</button>
+        <button id="listTypeBtn" style="border:1px solid var(--accent-ink);color:var(--accent-ink);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">⌨️ 주관식 재시험</button>
         <span id="listHint" style="font-size:12px;color:var(--ink-soft);align-self:center"></span>
       </div>
       <div id="listBody"></div>
@@ -510,7 +508,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-22-6";
+const APP_VER = "2026-10-22-7";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3663,7 +3661,7 @@ function openList(kind){
         // 한 번 맞혀 둔 단어는 표시해 준다 (한 번 더 맞히면 자동 제외)
         if(wrongOk.has(favKey(it.group,it.day,it.w)))
           row.querySelector(".vm").insertAdjacentHTML("beforeend",
-            ` <span style="font-size:11.5px;color:var(--accent);font-weight:700">✓ 1/2</span>`);
+            ` <span style="font-size:11.5px;color:var(--accent-ink);font-weight:700">✓ 1/2</span>`);
         // 다 외운 단어는 목록에서 제외한다 (기록에서도 지운다)
         const del=document.createElement("button");
         del.style.cssText="border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--ink-soft);flex:none";
