@@ -294,6 +294,71 @@
     .psg-words .wn{font-size:11px}
   }
 
+  /* ---------- 어법 공부 ---------- */
+  #screen-gramlist .title, #screen-gramlist .subtitle{text-align:center}
+  .g-back{font-size:13px;color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px;margin-bottom:14px}
+  .g-sec{font-size:13.5px;font-weight:800;margin:22px 0 9px}
+  .g-sec:first-of-type{margin-top:0}
+  .g-sec small{font-weight:500;color:var(--ink-soft);margin-left:6px;font-size:12px}
+  #gramPidGrid{margin-top:0}
+  .seg{display:flex;flex-wrap:wrap;gap:8px}
+  .seg button{border:1px solid var(--line);background:var(--cream);border-radius:10px;padding:10px 15px;font-weight:700;font-size:14px;color:var(--ink-soft);transition:.12s}
+  .seg button.on{border-color:var(--accent-ink);background:var(--accent-soft);color:var(--accent-ink);box-shadow:0 0 0 2px var(--accent-soft)}
+  .g-go{display:block;width:100%;margin-top:24px;background:var(--accent-ink);color:#fff;border-radius:12px;padding:15px;font-weight:800;font-size:16px}
+  .g-go:disabled{opacity:.45;cursor:default}
+  .g-ask{font-size:14.5px;color:var(--ink-soft);margin-bottom:14px;text-align:center;line-height:1.6;word-break:keep-all}
+  .g-ask b{color:var(--wrong)}
+  .g-sent{font-family:Georgia,"Times New Roman",serif;font-size:19px;line-height:2.15;margin-bottom:14px;word-break:break-word}
+  .gw,.gp{cursor:pointer;border-radius:5px;padding:2px 1px;transition:background .12s}
+  .gp.ul{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:6px;text-decoration-color:var(--accent-ink)}
+  .gw.on,.gp.on{background:var(--orange-light);box-shadow:0 0 0 2px var(--orange)}
+  .g-sent.done .gw,.g-sent.done .gp{cursor:default}
+  .gp.r-ok{background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent-ink)}
+  .gp.r-no{background:var(--wrong-soft);box-shadow:0 0 0 2px var(--wrong);color:var(--wrong)}
+  .gw.r-false,.gp.r-false{background:none;box-shadow:0 0 0 2px var(--line)}
+  .g-row{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .g-from{font-family:Georgia,"Times New Roman",serif;font-weight:700;font-size:16px;color:var(--orange);max-width:42%;overflow-wrap:anywhere}
+  .g-arr{color:var(--ink-soft);flex:none}
+  .g-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:12px 13px;font-size:16px;font-family:inherit;background:var(--card)}
+  .g-row input:focus{outline:none;border-color:var(--accent-ink);box-shadow:0 0 0 3px var(--accent-soft)}
+  .g-row input:disabled{background:var(--cream);color:var(--ink-soft)}
+  .g-tip{font-size:12px;color:var(--ink-soft);line-height:1.6;margin-top:2px;text-align:center;word-break:keep-all}
+  .g-warn{font-size:13px;color:var(--orange);font-weight:700;text-align:center;min-height:0;margin-top:6px}
+  .g-feed{margin-top:14px}
+  .g-feed .g-fixed{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.85;margin:4px 0 6px}
+  .g-feed .g-fixed mark{background:#fff;color:var(--accent-ink);font-weight:800;padding:0 3px;border-radius:4px}
+  .g-feed .g-ko{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin-bottom:4px;word-break:keep-all}
+  .g-item{border-top:1px dashed rgba(15,31,61,.18);padding:10px 0 3px;font-size:14.5px;line-height:1.6}
+  .g-item .gi-h{font-weight:700}
+  .g-item .gi-h .en{font-family:Georgia,"Times New Roman",serif}
+  .g-item .gi-h s{color:var(--wrong)}
+  .g-item .gi-mine{font-size:13px;color:var(--wrong)}
+  .g-item .gi-n{font-size:13.5px}
+  .g-item .gi-x{font-size:12.5px;color:var(--ink-soft)}
+  .g-btns{display:flex;gap:10px;align-items:center;margin-top:16px}
+  .g-btns button{background:var(--accent-ink);color:#fff;border-radius:12px;padding:12px 22px;font-weight:800;font-size:15px;margin-left:auto}
+  .g-btns .g-quit{background:none;color:var(--ink-soft);border:1px solid var(--line);font-weight:600;margin-left:0;padding:11px 14px;font-size:13.5px}
+  .g-res-row{padding:11px 2px;border-top:1px solid var(--line);font-size:14px;line-height:1.7}
+  .g-res-row:first-child{border-top:none}
+  .g-res-row .r-h{font-weight:800;color:var(--wrong)}
+  .g-res-row .r-s{font-family:Georgia,"Times New Roman",serif;font-size:15px}
+  .g-res-row .r-s mark{background:var(--accent-soft);color:var(--accent-ink);font-weight:700;padding:0 2px;border-radius:3px}
+  @media(max-width:560px){
+    #screen-gramlist .title{font-size:22px}
+    #screen-gramlist .subtitle{font-size:13px}
+    #gramPidGrid .day-chip{padding:10px 4px}
+    #gramPidGrid .day-chip .d-num{font-size:12px !important;white-space:nowrap;letter-spacing:-.02em}
+    .seg button{padding:9px 12px;font-size:13px}
+    .g-ask{font-size:13px}
+    .g-sent{font-size:16.5px;line-height:2.05}
+    .g-from{font-size:14.5px}
+    .g-row input{font-size:16px;padding:10px 11px}
+    .g-feed .g-fixed{font-size:14.5px}
+    .g-item{font-size:13.5px}
+    .g-item .gi-n{font-size:12.5px}
+    .g-btns button{font-size:14px;padding:11px 18px}
+  }
+
 </style>
 </head>
 <body>
@@ -305,6 +370,7 @@
     <a class="tab-btn" href="/">점수 확인</a>
     <button class="tab-btn active" id="tabVocab">단어 공부</button>
     <button class="tab-btn" id="tabPassage">지문 공부</button>
+    <button class="tab-btn" id="tabGrammar">어법 공부</button>
   </div>
 </header>
 
@@ -481,6 +547,60 @@
     </div>
   </section>
 
+  <!-- ============ SCREEN: 어법 — 시험 · 지문 · 방식 고르기 ============ -->
+  <section id="screen-gramlist" class="hidden">
+    <h1 class="title" id="gramListTitle">어법 공부</h1>
+    <p class="subtitle" id="gramListSub"></p>
+    <div class="grid" id="gramGroupGrid"></div>
+    <div class="panel hidden" id="gramMsg"></div>
+    <div class="panel hidden" id="gramSetup">
+      <button class="g-back" id="gramBack">← 다른 시험 고르기</button>
+      <div class="g-sec">지문 <small>여러 개 고를 수 있어요</small></div>
+      <div class="day-grid" id="gramPidGrid"></div>
+      <div class="g-sec">문장 순서 <small>지문 안에서</small></div>
+      <div class="seg" data-opt="order"><button data-v="seq">순서대로</button><button data-v="rand">랜덤</button></div>
+      <div class="g-sec">한 문장에 틀린 곳</div>
+      <div class="seg" data-opt="count"><button data-v="1">1개</button><button data-v="2">2개</button><button data-v="3">3개</button><button data-v="mix">섞어서 (1~3개)</button></div>
+      <div class="g-sec">틀린 곳 찾기</div>
+      <div class="seg" data-opt="mode"><button data-v="hint">밑줄 친 곳에서 고르기</button><button data-v="free">밑줄 없이 직접 찾기</button></div>
+      <button class="g-go" id="gramGo">지문을 골라 주세요</button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: 어법 문제 ============ -->
+  <section id="screen-gram" class="hidden">
+    <div class="stage">
+      <div class="progress"><i id="gramBar"></i></div>
+      <div class="counter" id="gramCounter"></div>
+      <div class="panel">
+        <div class="g-ask" id="gramAsk"></div>
+        <div class="g-sent" id="gramSent"></div>
+        <div id="gramAns"></div>
+        <div class="g-warn" id="gramWarn"></div>
+        <div class="g-feed" id="gramFeed"></div>
+        <div class="g-btns">
+          <button class="g-quit" id="gramQuit">그만하기</button>
+          <button id="gramCheck">채점하기</button>
+          <button id="gramNext" class="hidden">다음 문장 →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: 어법 결과 ============ -->
+  <section id="screen-gramres" class="hidden">
+    <div class="result">
+      <div class="big" id="gramResPct"></div>
+      <div class="lbl" id="gramResLbl"></div>
+      <div class="row">
+        <button class="warn hidden" id="gramResWrong">틀린 문장만 다시</button>
+        <button class="primary" id="gramResAgain">새로 섞어서 다시</button>
+        <button id="gramResSetup">범위 다시 고르기</button>
+      </div>
+    </div>
+    <div class="panel hidden" id="gramResList"></div>
+  </section>
+
   <footer>능률VOCA 단어 학습 · 모바일에서도 잘 작동합니다 · <span id="verTag"></span></footer>
   <div id="verBanner" class="hidden" style="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink,#333);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:99;display:flex;gap:12px;align-items:center">
     새 버전이 나왔어요
@@ -512,7 +632,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-22-9";
+const APP_VER = "2026-10-25-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2117,10 +2237,10 @@ const state = {
 };
 
 const $ = id => document.getElementById(id);
-const screens = ["login","home","day","mode","flash","quiz","result","list","psglist","passage"];
+const screens = ["login","home","day","mode","flash","quiz","result","list","psglist","passage","gramlist","gram","gramres"];
 function show(name){
   screens.forEach(s=>$("screen-"+s).classList.toggle("hidden", s!==name));
-  if(!["psglist","passage","login"].includes(name)) setPsgUrl();
+  if(!["psglist","passage","gramlist","gram","gramres","login"].includes(name)) setGoUrl();
   window.scrollTo(0,0);
 }
 
@@ -3781,6 +3901,10 @@ async function enterApp(data,key,name,btn){
       if(pid&&list.includes(pid)) openPassage(g,list.indexOf(pid));
       else openPsgGroup(g);
     });
+  } else if(params.get("go")==="grammar"){
+    setTab("grammar");
+    const g=params.get("g");
+    openGramHome().then(()=>{ if(g&&gram.index&&gram.index[g]) openGramGroup(g); });
   } else show("home");
 }
 async function logout(){
@@ -3860,19 +3984,19 @@ function dedupe(arr){const seen=new Set();return arr.filter(x=>{const k=x.group+
    로그인한 학생 키로 창구 함수를 불러야만 받을 수 있다
    (supabase/migrations/20261017_1_지문.sql). */
 const psg={index:null, groups:[], view:null, group:null, list:[], i:0};
-// 지문 화면에 있는 동안 주소에 ?go=passage&g=시험&p=지문 을 남겨, 새로고침해도 같은 화면으로 돌아오게 한다.
-// g 가 없으면 주소에서 지운다 (단어 화면으로 갈 때)
-function setPsgUrl(g,pid){
+// 지문·어법 화면에 있는 동안 주소에 ?go=passage|grammar&g=시험&p=지문 을 남겨, 새로고침해도 같은 화면으로 돌아오게 한다.
+// go 가 없으면 주소에서 지운다 (단어 화면으로 갈 때)
+function setGoUrl(go,g,pid){
   const q=new URLSearchParams(location.search);
   ["go","g","p"].forEach(k=>q.delete(k));
-  if(g!==undefined){ q.set("go","passage"); if(g) q.set("g",g); if(pid) q.set("p",pid); }
+  if(go){ q.set("go",go); if(g) q.set("g",g); if(pid) q.set("p",pid); }
   const t=q.toString(), url=location.pathname+(t?"?"+t:"")+location.hash;
   if(url!==location.pathname+location.search+location.hash) history.replaceState(null,"",url);
 }
 // 단어 홈처럼 시험(그룹)마다 카드를 먼저 보여 주고, 고르면 그 시험의 지문 번호를 보여 준다
 async function openPassageHome(){
   const body=$("psgListBody"), grid=$("psgGroupGrid");
-  psg.view=null; setPsgUrl("");
+  psg.view=null; setGoUrl("passage");
   $("psgListTitle").textContent="지문 공부";
   $("psgListSub").textContent="시험 범위를 고르면 지문 목록이 나와요.";
   grid.innerHTML=""; grid.classList.add("hidden");
@@ -3914,7 +4038,7 @@ async function openPassageHome(){
 function openPsgGroup(g){
   const list=(psg.index&&psg.index[g])||[];
   if(!list.length){ openPassageHome(); return; }
-  psg.view=g; setPsgUrl(g);
+  psg.view=g; setGoUrl("passage",g);
   $("psgListTitle").textContent=g;
   $("psgListSub").textContent=`지문 ${list.length}개 · 번호를 누르면 원문이 열리고, 문장을 누르면 해석을 볼 수 있어요.`;
   $("psgGroupGrid").classList.add("hidden");
@@ -3933,7 +4057,7 @@ async function openPassage(group,i){
   const list=(psg.index&&psg.index[group])||[];
   if(i<0||i>=list.length) return;
   psg.group=group; psg.list=list; psg.i=i;
-  const pid=list[i]; setPsgUrl(group,pid);
+  const pid=list[i]; setGoUrl("passage",group,pid);
   $("psgTitle").textContent=(VOCAB_DATA[group]?dayLabel(group,pid):pid);
   $("psgCount").textContent=`${group} · ${i+1}/${list.length}`;
   $("psgPrev").disabled=i===0; $("psgNext").disabled=i===list.length-1;
@@ -3985,14 +4109,296 @@ function splitSentences(t){
 $("psgPrev").onclick=()=>openPassage(psg.group,psg.i-1);
 $("psgNext").onclick=()=>openPassage(psg.group,psg.i+1);
 
+/* ---------- 어법 공부 ----------
+   선생님이 지문 문장마다 [대괄호]로 어법 포인트를 표시해 두었다 (pts: 정답 · 틀린 형태 · 설명).
+   한 문장에서 포인트 1~3개를 골라 틀린 형태로 바꿔 보여 주고, 학생이 찾아서 고친다.
+   데이터는 DB(grammar_sentences 표)에만 있고 로그인한 학생 키로 창구 함수를 불러 받는다
+   (supabase/migrations/20261025_1_어법.sql). 정답이 곧 지문 원문이라 채점은 화면에서 한다. */
+const gram={index:null, group:null, pick:new Set(), rows:[], qs:[], i:0, sel:[], done:false, score:0, total:0, ko:{},
+            opt:{order:"seq", count:"1", mode:"hint"}};
+try{ Object.assign(gram.opt, JSON.parse(localStorage.getItem("gram_opt")||"{}")); }catch(e){}
+const senMark=n=>n>=1&&n<=10 ? String.fromCharCode(0x2775+n) : n>=11&&n<=20 ? String.fromCharCode(0x24EA+n-10) : n+".";
+const gramLabel=(g,pid)=>VOCAB_DATA[g]?dayLabel(g,pid):pid;
+const okShow=pt=>(pt.ok.find(a=>a!=="삭제")||"");          // 원문에 실제로 있는 형태 (첫 번째 정답)
+const okText=pt=>pt.ok.map(a=>a==="삭제"?"(삭제)":a).join(" / ");
+function gramNorm(t){
+  return String(t||"").replace(/[’‘]/g,"'").replace(/[“”]/g,'"').toLowerCase().replace(/\s+/g," ").trim().replace(/[\s.,!?;:]+$/,"");
+}
+function gramMatch(ans,oks){
+  const a=gramNorm(ans); if(!a) return false;
+  return oks.some(o=> o==="삭제" ? ["삭제","생략","x"].includes(a) : gramNorm(o)===a);
+}
+
+async function openGramHome(){
+  gram.group=null; setGoUrl("grammar");
+  $("gramListTitle").textContent="어법 공부";
+  $("gramListSub").textContent="시험 범위를 고르면 지문 문장으로 어법 문제를 풀 수 있어요.";
+  const grid=$("gramGroupGrid"), msg=$("gramMsg");
+  grid.innerHTML=""; grid.classList.add("hidden"); $("gramSetup").classList.add("hidden");
+  msg.classList.remove("hidden"); msg.innerHTML=`<p class="psg-empty">어법 문제를 불러오는 중…</p>`;
+  show("gramlist");
+  let idx=null;
+  if(sb && student.key){
+    try{
+      const {data,error}=await sb.rpc("grammar_index",{p_key:student.key});
+      // 함수를 아직 안 만든 DB(PGRST202)면 "준비된 문제 없음"으로 보여 준다
+      if(error && error.code!=="PGRST202") throw error;
+      idx=(error?null:data)||{};
+    }catch(e){ console.warn("어법 목록 실패",e); }
+  }
+  gram.index=idx;
+  if(!idx){
+    msg.innerHTML=`<p class="psg-empty">어법 문제를 불러오지 못했어요.<br>잠시 뒤 다시 시도하거나, 로그아웃 후 다시 입장해 보세요.</p>`;
+    return;
+  }
+  const groups=[...GROUPS.filter(g=>idx[g]), ...Object.keys(idx).filter(g=>!GROUPS.includes(g))]
+    .filter(g=>Array.isArray(idx[g]) && idx[g].length);
+  if(!groups.length){
+    msg.innerHTML=`<p class="psg-empty">아직 준비된 어법 문제가 없어요.<br>선생님이 문제를 올리면 여기에 나타나요.</p>`;
+    return;
+  }
+  msg.classList.add("hidden"); grid.classList.remove("hidden");
+  groups.forEach(g=>{
+    const n=idx[g].reduce((t,x)=>t+x[1],0);
+    const card=document.createElement("button"); card.className="grade-card";
+    card.innerHTML=`<span class="g-eyebrow">어법</span>
+      <span class="g-name">${esc(g)}</span>
+      <span class="g-meta">지문 ${idx[g].length}개 · 문장 ${n}개</span>`;
+    card.onclick=()=>openGramGroup(g);
+    grid.appendChild(card);
+  });
+}
+
+function openGramGroup(g){
+  const list=(gram.index&&gram.index[g])||[];
+  if(!list.length){ openGramHome(); return; }
+  if(gram.group!==g) gram.pick=new Set();
+  gram.group=g; setGoUrl("grammar",g);
+  $("gramListTitle").textContent=g;
+  $("gramListSub").textContent="지문을 고르고 문제 방식을 정한 뒤 시작하세요.";
+  $("gramGroupGrid").classList.add("hidden"); $("gramMsg").classList.add("hidden");
+  $("gramSetup").classList.remove("hidden");
+  $("gramBack").classList.toggle("hidden", Object.keys(gram.index).length<2);
+  const grid=$("gramPidGrid"); grid.innerHTML="";
+  const total=list.reduce((t,x)=>t+x[1],0);
+  const all=document.createElement("button"); all.className="day-chip all";
+  all.innerHTML=`<div class="d-num">전체</div><div class="d-count">지문 ${list.length}개 · 문장 ${total}개</div>`;
+  all.onclick=()=>{
+    const every=list.every(([pid])=>gram.pick.has(pid));
+    list.forEach(([pid])=> every ? gram.pick.delete(pid) : gram.pick.add(pid));
+    paintGramPick();
+  };
+  grid.appendChild(all);
+  list.forEach(([pid,n])=>{
+    const b=document.createElement("button"); b.className="day-chip"; b.dataset.pid=pid;
+    b.innerHTML=`<span class="d-tick">✓</span><div class="d-num">${esc(gramLabel(g,pid))}</div><div class="d-count">${n}문장</div>`;
+    b.onclick=()=>{ gram.pick.has(pid)?gram.pick.delete(pid):gram.pick.add(pid); paintGramPick(); };
+    grid.appendChild(b);
+  });
+  document.querySelectorAll("#gramSetup .seg").forEach(seg=>{
+    seg.querySelectorAll("button").forEach(b=>{
+      b.classList.toggle("on", gram.opt[seg.dataset.opt]===b.dataset.v);
+      b.onclick=()=>{
+        gram.opt[seg.dataset.opt]=b.dataset.v;
+        try{ localStorage.setItem("gram_opt",JSON.stringify(gram.opt)); }catch(e){}
+        seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+      };
+    });
+  });
+  paintGramPick();
+  show("gramlist");
+}
+function paintGramPick(){
+  const list=(gram.index&&gram.index[gram.group])||[];
+  document.querySelectorAll("#gramPidGrid .day-chip[data-pid]").forEach(b=>b.classList.toggle("on",gram.pick.has(b.dataset.pid)));
+  const n=list.filter(([pid])=>gram.pick.has(pid)).reduce((t,x)=>t+x[1],0);
+  const go=$("gramGo"); go.disabled=!n;
+  go.textContent= n ? `문장 ${n}개 시작하기` : "지문을 골라 주세요";
+}
+$("gramBack").onclick=()=>openGramHome();
+$("gramGo").onclick=startGram;
+
+async function startGram(){
+  const g=gram.group, pids=(gram.index[g]||[]).map(x=>x[0]).filter(p=>gram.pick.has(p));
+  if(!pids.length) return;
+  const go=$("gramGo"); go.disabled=true; go.textContent="문제를 불러오는 중…";
+  let rows=null;
+  try{
+    const {data,error}=await sb.rpc("grammar_get",{p_key:student.key,p_grp:g,p_pids:pids});
+    if(error) throw error;
+    rows=data||[];
+  }catch(e){ console.warn("어법 문제 실패",e); }
+  // 채점 뒤에 보여 줄 문장 해석 — 지문에서 가져온다 (못 가져와도 문제는 푼다)
+  await Promise.all(pids.filter(p=>!((g+"|"+p) in gram.ko)).map(async p=>{
+    try{
+      const r=await sb.rpc("passage_get",{p_key:student.key,p_grp:g,p_pid:p});
+      const ss=splitSentences(r.data&&r.data.ko);
+      gram.ko[g+"|"+p]=ss ? ss.map(x=>x.replace(/^[❶-❿⓫-⓴①-⑳]\s*/,"")) : null;
+    }catch(e){ gram.ko[g+"|"+p]=null; }
+  }));
+  paintGramPick();
+  if(!rows||!rows.length){ go.textContent="문제를 불러오지 못했어요 · 다시 누르기"; go.disabled=false; return; }
+  gram.rows=rows;
+  beginGram(buildGramQs(rows));
+}
+// 지문 순서는 그대로, 문장 순서만 (랜덤이면) 지문 안에서 섞는다
+function buildGramQs(rows){
+  const by=[]; rows.forEach(r=>{ let b=by.find(x=>x.pid===r.pid); if(!b){ b={pid:r.pid,rs:[]}; by.push(b); } b.rs.push(r); });
+  return by.flatMap(b=>(gram.opt.order==="rand"?shuffle(b.rs.slice()):b.rs).map(makeGramQ));
+}
+function makeGramQ(row){
+  const n=row.pts.length, max=Math.min(3,n);
+  const k= gram.opt.count==="mix" ? 1+Math.floor(Math.random()*max) : Math.min(+gram.opt.count||1, n);
+  const wrong=new Set(shuffle([...Array(n).keys()]).slice(0,k));
+  const bad=row.pts.map(p=>p.bad[Math.floor(Math.random()*p.bad.length)]);
+  return {row, k, wrong, bad, mode:gram.opt.mode, got:0, done:false};
+}
+function beginGram(qs){
+  gram.qs=qs; gram.i=0; gram.score=0; gram.total=0;
+  show("gram"); renderGramQ();
+}
+function gramSentenceHtml(q,fixed){
+  // fixed: 채점 뒤 고친 문장 (틀렸던 곳을 정답으로 표시)
+  const segs=q.row.src.split(/\[([^\]]+)\]/);
+  let h="", o=0;
+  segs.forEach((t,idx)=>{
+    if(idx%2===0){
+      if(fixed||q.mode!=="free") h+=esc(t);
+      else t.split(/(\s+)/).forEach(w=>{ h+= w.trim() ? `<span class="gw" data-o="${o++}">${esc(w)}</span>` : esc(w); });
+      return;
+    }
+    const j=(idx-1)/2, pt=q.row.pts[j];
+    if(fixed){ const v=okShow(pt); h+= q.wrong.has(j) ? `<mark>${esc(v||"(삭제)")}</mark>` : esc(v); return; }
+    const v=q.wrong.has(j) ? q.bad[j] : okShow(pt);
+    h+=`<span class="gp${q.mode==="free"?"":" ul"}" data-p="${j}" data-o="${o++}">${esc(v)}</span>`;
+  });
+  return h.replace(/ {2,}/g," ");
+}
+function renderGramQ(){
+  const q=gram.qs[gram.i];
+  gram.sel=[]; gram.done=false;
+  $("gramBar").style.width=(gram.i/gram.qs.length*100)+"%";
+  $("gramCounter").textContent=`${gramLabel(gram.group,q.row.pid)} · ${senMark(q.row.sen)}번 문장 · ${gram.i+1} / ${gram.qs.length}`;
+  $("gramAsk").innerHTML = q.mode==="free"
+    ? `이 문장에서 어법상 <b>틀린 곳 ${q.k}개</b>를 찾아 눌러서 고치세요.`
+    : `밑줄 친 곳 중 어법상 <b>틀린 곳 ${q.k}개</b>를 골라 고치세요.`;
+  const sent=$("gramSent"); sent.className="g-sent"; sent.innerHTML=gramSentenceHtml(q,false);
+  $("gramWarn").textContent=""; $("gramFeed").innerHTML="";
+  $("gramCheck").classList.remove("hidden"); $("gramNext").classList.add("hidden");
+  renderGramAns();
+}
+$("gramSent").onclick=e=>{
+  const el=e.target.closest(".gw,.gp"); if(!el||gram.done) return;
+  const q=gram.qs[gram.i], o=+el.dataset.o;
+  const at=gram.sel.findIndex(x=>x.o===o);
+  $("gramWarn").textContent="";
+  if(at>=0){ gram.sel.splice(at,1); el.classList.remove("on"); }
+  else{
+    if(gram.sel.length>=q.k){ $("gramWarn").textContent=`틀린 곳은 ${q.k}개예요. 고른 것을 다시 누르면 빠져요.`; return; }
+    gram.sel.push({o, el, text:el.textContent.replace(/[.,;:!?”"’)]+$/,""), p: el.dataset.p!==undefined ? +el.dataset.p : null, val:""});
+    gram.sel.sort((a,b)=>a.o-b.o);
+    el.classList.add("on");
+  }
+  renderGramAns(o);
+};
+function renderGramAns(focusO){
+  const box=$("gramAns");
+  if(!gram.sel.length){
+    box.innerHTML=`<p class="g-tip">문장에서 틀렸다고 생각하는 곳을 누르면 여기에 고쳐 쓸 칸이 생겨요.</p>`;
+    return;
+  }
+  box.innerHTML=gram.sel.map(x=>`<div class="g-row"><span class="g-from">${esc(x.text)}</span><span class="g-arr">→</span>
+    <input data-o="${x.o}" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="고친 형태" value="${esc(x.val)}"></div>`).join("")
+    + `<p class="g-tip">없애야 하는 말이면 ‘삭제’라고 쓰세요. 대소문자는 상관없어요.</p>`;
+  box.querySelectorAll("input").forEach(inp=>{
+    const x=gram.sel.find(s=>s.o===+inp.dataset.o);
+    inp.oninput=()=>{ x.val=inp.value; };
+    inp.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); const nx=[...box.querySelectorAll("input")].find(i=>!i.value.trim()); nx?nx.focus():gradeGram(); } };
+  });
+  const f=focusO!==undefined && box.querySelector(`input[data-o="${focusO}"]`);
+  if(f) f.focus();
+}
+function gradeGram(){
+  if(gram.done) return;
+  const q=gram.qs[gram.i], pts=q.row.pts;
+  gram.done=true; q.done=true;
+  const items=[]; let got=0;
+  [...q.wrong].sort((a,b)=>a-b).forEach(j=>{
+    const s=gram.sel.find(x=>x.p===j);
+    const ok= !!s && gramMatch(s.val, pts[j].ok);
+    if(ok) got++;
+    items.push({j, st: ok?"ok" : s?"fix":"miss", mine:s?s.val.trim():""});
+  });
+  const extra=gram.sel.filter(x=>x.p===null||!q.wrong.has(x.p));
+  q.got=got; gram.score+=got; gram.total+=q.k;
+  // 문장 위 표시
+  const sent=$("gramSent"); sent.classList.add("done");
+  sent.querySelectorAll(".on").forEach(el=>el.classList.remove("on"));
+  q.wrong.forEach(j=>{ const el=sent.querySelector(`.gp[data-p="${j}"]`); if(el) el.classList.add(items.find(x=>x.j===j).st==="ok"?"r-ok":"r-no"); });
+  extra.forEach(x=>x.el.classList.add("r-false"));
+  $("gramAns").querySelectorAll("input").forEach(i=>i.disabled=true);
+  $("gramWarn").textContent="";
+  const ko=(gram.ko[gram.group+"|"+q.row.pid]||[])[q.row.sen-1];
+  const all=got===q.k;
+  let h=`<div class="ans-feed ${all?"ok":"no"}"><span class="fb-t">${all?"✓ 모두 고쳤어요":`${got} / ${q.k} 고쳤어요`}</span>
+    <div class="g-fixed">${gramSentenceHtml(q,true)}</div>${ko?`<div class="g-ko">${esc(ko)}</div>`:""}`;
+  items.forEach(it=>{
+    const pt=pts[it.j], from=q.bad[it.j];
+    const head= it.st==="ok" ? "✓ 맞게 고쳤어요" : it.st==="fix" ? "△ 찾았지만 고친 형태가 달라요" : "✗ 못 찾았어요";
+    h+=`<div class="g-item"><div class="gi-h">${head}</div>
+      <div class="gi-h"><span class="en"><s>${esc(from)}</s> → ${esc(okText(pt))}</span></div>
+      ${it.st==="fix"?`<div class="gi-mine">내 답: ${esc(it.mine||"(비어 있음)")}</div>`:""}
+      ${pt.note?`<div class="gi-n">${esc(pt.note)}</div>`:""}${pt.extra?`<div class="gi-x">${esc(pt.extra)}</div>`:""}</div>`;
+  });
+  extra.forEach(x=>{
+    h+=`<div class="g-item"><div class="gi-h">○ <span class="en">${esc(x.text)}</span> 은(는) 맞는 표현이에요</div>`
+      +(x.p!==null&&pts[x.p].note?`<div class="gi-x">(${esc(pts[x.p].note)})</div>`:"")+`</div>`;
+  });
+  h+="</div>";
+  $("gramFeed").innerHTML=h;
+  $("gramCheck").classList.add("hidden");
+  const nx=$("gramNext"); nx.classList.remove("hidden");
+  nx.textContent= gram.i===gram.qs.length-1 ? "결과 보기" : "다음 문장 →";
+  nx.focus();
+}
+$("gramCheck").onclick=gradeGram;
+$("gramNext").onclick=()=>{
+  if(gram.i<gram.qs.length-1){ gram.i++; renderGramQ(); window.scrollTo(0,0); }
+  else showGramResult();
+};
+$("gramQuit").onclick=()=>{
+  const n=gram.qs.filter(q=>q.done).length;
+  if(n) showGramResult(); else openGramGroup(gram.group);
+};
+function showGramResult(){
+  const done=gram.qs.filter(q=>q.done);
+  const pct=gram.total?Math.round(gram.score/gram.total*100):0;
+  $("gramResPct").textContent=pct+"%";
+  $("gramResLbl").textContent=`문장 ${done.length}개 · 틀린 곳 ${gram.total}개 중 ${gram.score}개를 고쳤어요`;
+  const miss=done.filter(q=>q.got<q.k);
+  $("gramResWrong").classList.toggle("hidden",!miss.length);
+  const list=$("gramResList");
+  list.classList.toggle("hidden",!miss.length);
+  list.innerHTML=miss.map(q=>`<div class="g-res-row"><span class="r-h">${esc(gramLabel(gram.group,q.row.pid))} ${senMark(q.row.sen)} · ${q.got}/${q.k}</span>
+    <div class="r-s">${gramSentenceHtml(q,true)}</div></div>`).join("");
+  $("gramBar").style.width="100%";
+  show("gramres");
+}
+// 틀린 문장만: 같은 곳을 같은 형태로 다시 / 새로 섞어서: 같은 범위·방식으로 틀린 곳을 새로 고른다
+$("gramResWrong").onclick=()=>beginGram(gram.qs.filter(q=>q.done&&q.got<q.k).map(q=>({...q,got:0,done:false})));
+$("gramResAgain").onclick=()=>beginGram(buildGramQs(gram.rows));
+$("gramResSetup").onclick=()=>openGramGroup(gram.group);
+
 /* 헤더 탭: 같은 페이지 안에서 바뀐다 (점수 확인은 성적 사이트 링크) */
 function setTab(name){
   $("tabVocab").classList.toggle("active", name==="vocab");
   $("tabPassage").classList.toggle("active", name==="passage");
-  $("pageName").textContent = name==="passage" ? "지문 공부" : "단어 공부";   // 헤더 제목도 탭에 맞춘다
+  $("tabGrammar").classList.toggle("active", name==="grammar");
+  $("pageName").textContent = {passage:"지문 공부", grammar:"어법 공부"}[name] || "단어 공부";   // 헤더 제목도 탭에 맞춘다
 }
 $("tabVocab").onclick=()=>{ if(student.name){ setTab("vocab"); show("home"); } };
 $("tabPassage").onclick=()=>{ if(student.name){ setTab("passage"); openPassageHome(); } };
+$("tabGrammar").onclick=()=>{ if(student.name){ setTab("grammar"); openGramHome(); } };
 
 /* 세션 확인 — 성적 사이트 도메인/vocab-study/ 로 서비스되므로 로그인 쿠키가 자동으로 붙는다.
    200 이면 이미 로그인된 상태, 401 이면 로그인 폼을 보여 준다. PIN 은 어디에도 저장하지 않는다. */
