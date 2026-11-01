@@ -147,6 +147,8 @@
   /* ---------- Quiz ---------- */
   .quiz-q{font-size:34px;font-weight:800;text-align:center;margin:8px 0 6px}
   .quiz-prompt{text-align:center;color:var(--ink-soft);font-size:14px;margin-bottom:20px}
+  .quiz-q.ko{font-size:25px;line-height:1.45;word-break:keep-all}   /* 스펠링 퀴즈: 뜻이 문제 */
+  .spell-hint{display:inline-block;margin-top:6px;font-size:13px;color:var(--accent-ink);font-weight:700}
   .opt{
     display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);
     border-radius:12px;padding:16px 18px;margin-bottom:10px;font-size:16px;transition:.12s
@@ -433,6 +435,7 @@
       <button class="mode-btn" data-mode="flash"><span class="ic">🃏</span><span><span class="m-title">플래시카드</span><br><span class="m-sub">카드를 넘기며 뜻 확인 · 즐겨찾기</span></span></button>
       <button class="mode-btn" data-mode="quiz"><span class="ic">✏️</span><span><span class="m-title">객관식 퀴즈</span><br><span class="m-sub">6개 보기에서 뜻 고르기 · 20문제</span></span></button>
       <button class="mode-btn" data-mode="typequiz"><span class="ic">⌨️</span><span><span class="m-title">주관식 퀴즈</span><br><span class="m-sub">뜻을 직접 입력 · 20문제</span></span></button>
+      <button class="mode-btn hidden" data-mode="spellquiz" id="spellBtn"><span class="ic">🔤</span><span><span class="m-title">스펠링 퀴즈</span><br><span class="m-sub">뜻을 보고 영어 철자 쓰기 · 20문제</span></span></button>
       <button class="mode-btn" data-mode="list"><span class="ic">📖</span><span><span class="m-title">단어장</span><br><span class="m-sub">전체 목록 보기 · 즐겨찾기 표시</span></span></button>
       <button class="mode-btn" data-mode="fav"><span class="ic">⭐</span><span><span class="m-title">즐겨찾기</span><br><span class="m-sub">별표한 단어 모아보기 · 재시험</span></span></button>
       <button class="mode-btn" data-mode="wrongquiz" id="wrongBtn"><span class="ic">🔁</span><span><span class="m-title">틀린 단어</span><br><span class="m-sub">틀렸던 단어 보기 · 재시험 · 제외</span></span></button>
@@ -483,7 +486,10 @@
             <button id="ansSubmit">확인</button>
           </div>
           <div id="ansFeed" class="ans-feed hidden"></div>
-          <p class="ans-tip">뜻이 여러 개면 하나만 써도 되고, <b>비슷한 뜻</b>으로 써도 정답으로 인정돼요.<br>
+          <p class="ans-tip hidden" id="ansTipSpell">대소문자는 상관없지만 <b>철자와 하이픈(-)은 정확해야</b> 해요.<br>
+            숙어의 A · B · ~ · do 같은 자리 표시는 써도 되고 빼도 돼요.<br>
+            모르겠으면 그냥 비워 두고 <b>확인</b>을 누르세요.</p>
+          <p class="ans-tip" id="ansTipType">뜻이 여러 개면 하나만 써도 되고, <b>비슷한 뜻</b>으로 써도 정답으로 인정돼요.<br>
             다만 <b>품사는 정확해야</b> 합니다 — 동사는 ‘~하다’, 형용사는 ‘~한’으로 쓰세요.<br>
             모르겠으면 그냥 비워 두고 <b>확인</b>을 누르세요.</p>
         </div>
@@ -518,6 +524,7 @@
       <div id="listActions" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
         <button id="listQuizBtn" style="background:var(--accent-ink);color:#fff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">✏️ 객관식 재시험</button>
         <button id="listTypeBtn" style="border:1px solid var(--accent-ink);color:var(--accent-ink);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">⌨️ 주관식 재시험</button>
+        <button id="listSpellBtn" class="hidden" style="border:1px solid var(--accent-ink);color:var(--accent-ink);background:var(--card);border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px">🔤 스펠링 재시험</button>
         <span id="listHint" style="font-size:12px;color:var(--ink-soft);align-self:center"></span>
       </div>
       <div id="listBody"></div>
@@ -632,7 +639,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-11-01-1";
+const APP_VER = "2026-11-01-2";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -2215,6 +2222,7 @@ const VOCAB_DATA = {
   "보성여고 2학년": {
     tag: "보성여고 · 고2",
     unit: "챕터",
+    spell: true,          // 스펠링 퀴즈 보이기 (철자를 시험 보는 학교)
     days: {
       "3-5": [
         {w:"resist", m:"거부하다"},
@@ -2710,6 +2718,7 @@ function setScope(group,days,label){
   state.scopeDays=days;
   state.scopeLabel=label;
   $("scopeLabel").textContent=`${group} · ${label}`;
+  $("spellBtn").classList.toggle("hidden", !hasSpell(group));
   // disable wrong-quiz if no stored wrongs for this scope yet
   show("mode");
 }
@@ -2721,6 +2730,7 @@ document.querySelectorAll(".mode-btn").forEach(btn=>{
     if(mode==="flash") startFlash();
     else if(mode==="quiz") startQuiz(itemsForScope(state.group,state.scopeDays),"choice");
     else if(mode==="typequiz") startQuiz(itemsForScope(state.group,state.scopeDays),"type");
+    else if(mode==="spellquiz") startQuiz(itemsForScope(state.group,state.scopeDays),"spell");
     else if(mode==="list") openList("list");
     else if(mode==="fav") openList("fav");
     else if(mode==="wrongquiz") openList("wrong");
@@ -3737,10 +3747,15 @@ function startQuiz(pool, mode){
 }
 function renderQuiz(){
   const q=state.quiz; const it=q.order[q.i];
-  const typing = q.mode==="type";
-  $("quizWord").textContent=it.w;
-  const lbl = typing ? neededPosLabel(it) : "";   // 유추한 품사는 표시하지 않는다
-  $("quizPrompt").innerHTML = typing
+  const spelling = q.mode==="spell";
+  const typing = q.mode==="type" || spelling;
+  $("quizWord").textContent = spelling ? it.m : it.w;
+  $("quizWord").classList.toggle("ko", spelling);
+  const lbl = q.mode==="type" ? neededPosLabel(it) : "";   // 유추한 품사는 표시하지 않는다
+  const sh = spelling ? spellHint(it) : "";
+  $("quizPrompt").innerHTML = spelling
+    ? `이 뜻의 영어 단어를 철자대로 쓰세요${sh?`<br><span class="spell-hint">같은 뜻 단어가 여럿이에요 · <b>${esc(sh)}</b>…로 시작</span>`:""}`
+    : typing
     ? `이 단어의 뜻을 직접 입력하세요${lbl?` · <b>${esc(lbl)}</b>`:""}`
     : "알맞은 뜻을 고르세요";
   $("quizCounter").textContent=`${q.i+1} / ${q.order.length}`;
@@ -3776,6 +3791,11 @@ function renderChoiceQuestion(it){
 /* ---------- 주관식 채점 ---------- */
 function renderTypeQuestion(){
   const inp=$("ansInput");
+  const spelling=state.quiz.mode==="spell";
+  inp.placeholder = spelling ? "영어 철자를 입력하세요" : "뜻을 한국어로 입력하세요";
+  inp.lang = spelling ? "en" : "ko";
+  $("ansTipType").classList.toggle("hidden", spelling);
+  $("ansTipSpell").classList.toggle("hidden", !spelling);
   inp.value=""; inp.disabled=false;
   $("ansSubmit").disabled=false;
   $("ansFeed").classList.add("hidden");
@@ -3914,6 +3934,7 @@ async function judgeWithAI(item,answer,formMismatch){
 
 async function submitAnswer(){
   const q=state.quiz;
+  if(q.mode==="spell") return submitSpell();
   if(q.mode!=="type" || q.answered) return;
   const it=q.order[q.i];
   const raw=$("ansInput").value;
@@ -4051,6 +4072,70 @@ function renderVerdict(res,it,raw){
   }
   markWrong(it);
 }
+/* ---------- 스펠링 퀴즈 ----------
+   뜻을 보여 주고 영어 철자를 쓰게 한다. 그룹에 spell:true 가 있을 때만 버튼이 보인다.
+   대소문자 · 앞뒤/겹친 공백 · 따옴표 모양 · 끝 문장부호 · 악센트(Niño)는 무시하고
+   철자와 하이픈은 정확해야 한다. 숙어의 자리 표시(A, B, ~, do, -ing)는 써도 빼도 정답,
+   (that) 같은 괄호 부분은 넣어도 빼도 정답, benefit[disadvantage] 는 어느 쪽이든 정답. */
+function hasSpell(group){ return !!(VOCAB_DATA[group]||{}).spell; }
+function spellNorm(t){
+  return String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[’‘`´]/g,"'").replace(/[.,!?;:]/g," ")
+    .replace(/\s+/g," ").trim().toLowerCase();
+}
+function spellAnswers(item){
+  const base=parseWord(item.w).base;
+  let forms=[base];
+  // A[B] → A 또는 B
+  forms=forms.flatMap(f=>{
+    const m=f.match(/^(.*?)(\S+)\[([^\]]+)\](.*)$/);
+    return m ? [m[1]+m[2]+m[4], m[1]+m[3]+m[4]] : [f];
+  });
+  // (…) → 빼거나, 괄호만 벗기거나
+  forms=forms.flatMap(f=>/[（(]/.test(f)
+    ? [f.replace(/\s*[（(][^)）]*[)）]\s*/g," "), f.replace(/[（()）]/g," ")] : [f]);
+  // 자리 표시를 뺀 형태도 인정 (대문자 A/B 만 — 관사 a 는 그대로)
+  forms=forms.flatMap(f=>[f, f.replace(/(^|\s)(A|B|~|do|doing|-ing)(?=\s|$)/g," ")]);
+  return [...new Set(forms.map(spellNorm).filter(Boolean))];
+}
+/* 같은 뜻의 다른 단어가 그룹에 있으면 구분할 수 있을 만큼 앞 글자를 힌트로 준다 */
+function spellHint(item){
+  const me=spellNorm(parseWord(item.w).base), mk=normKo(item.m);
+  const rivals=[...new Set(itemsForScope(item.group,"ALL")
+    .filter(x=>normKo(x.m)===mk).map(x=>spellNorm(parseWord(x.w).base)).filter(b=>b!==me))];
+  if(!rivals.length) return "";
+  let n=1;
+  while(n<me.length && rivals.some(r=>r.slice(0,n)===me.slice(0,n))) n++;
+  return parseWord(item.w).base.slice(0,n);
+}
+function submitSpell(){
+  const q=state.quiz; if(q.answered) return;
+  const it=q.order[q.i];
+  const raw=$("ansInput").value, ans=spellNorm(raw);
+  const right=`정답: <b>${esc(parseWord(it.w).base)}</b>`;
+  if(/[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(raw)){
+    feedback("maybe","영어로 입력해 주세요","뜻이 아니라 <b>영어 단어의 철자</b>를 적어야 해요.");
+    $("ansInput").focus(); return;   // 다시 입력할 기회를 줌
+  }
+  // 같은 뜻의 다른 단어를 쓴 경우 — 틀린 철자는 아니므로 다시 쓰게 한다
+  const mk=normKo(it.m);
+  const twin=ans && itemsForScope(it.group,"ALL").find(x=>normKo(x.m)===mk &&
+    spellNorm(parseWord(x.w).base)!==spellNorm(parseWord(it.w).base) && spellAnswers(x).includes(ans));
+  if(twin && !spellAnswers(it).includes(ans)){
+    feedback("maybe","🤔 뜻은 같지만 다른 단어예요",`<b>${esc(raw.trim())}</b>도 이 뜻이지만, 이 문제는 <b>${esc(spellHint(it))}</b>…로 시작하는 단어예요. 다시 써 보세요.`);
+    $("ansInput").focus(); return;
+  }
+  lockAnswer();
+  if(!ans){ feedback("no","정답을 확인하세요",right); markWrong(it); return; }
+  if(spellAnswers(it).includes(ans)){
+    feedback("ok","⭕ 정답이에요!",right); markCorrect(it); return;
+  }
+  const loose=t=>t.replace(/[-\s']/g,"");
+  const tip = spellAnswers(it).some(a=>loose(a)===loose(ans))
+    ? `<br><span style="color:var(--ink-soft);font-size:13.5px">띄어쓰기·하이픈(-)·아포스트로피(')까지 정확히 써야 해요.</span>` : "";
+  feedback("no","❌ 철자가 달라요",`내 답: <b>${esc(raw.trim())}</b><br>${right}${tip}`);
+  markWrong(it);
+}
 $("ansSubmit").onclick=submitAnswer;
 $("ansInput").addEventListener("keydown",e=>{ if(e.key==="Enter"){e.preventDefault(); submitAnswer();} });
 
@@ -4130,6 +4215,8 @@ function openList(kind){
     $("listHint").textContent=enoughForChoice?"":`객관식은 ${CHOICE_COUNT}개 이상일 때 볼 수 있어요`;
     $("listQuizBtn").onclick=()=>{ if(enoughForChoice) startQuiz(items,"choice"); };
     $("listTypeBtn").onclick=()=>startQuiz(items,"type");
+    $("listSpellBtn").classList.toggle("hidden", !hasSpell(state.group));
+    $("listSpellBtn").onclick=()=>startQuiz(items,"spell");
   }
 
   const body=$("listBody"); body.innerHTML="";
