@@ -632,7 +632,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-10-31-1";
+const APP_VER = "2026-11-01-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -4603,8 +4603,9 @@ async function startGram(){
   beginGram(buildGramQs(rows));
 }
 // 지문 순서는 그대로, 문장 순서만 (랜덤이면) 지문 안에서 섞는다
+// 어법 포인트가 없는 문장은 문제로 내지 않는다
 function buildGramQs(rows){
-  const by=[]; rows.forEach(r=>{ let b=by.find(x=>x.pid===r.pid); if(!b){ b={pid:r.pid,rs:[]}; by.push(b); } b.rs.push(r); });
+  const by=[]; rows.filter(r=>Array.isArray(r.pts)&&r.pts.length).forEach(r=>{ let b=by.find(x=>x.pid===r.pid); if(!b){ b={pid:r.pid,rs:[]}; by.push(b); } b.rs.push(r); });
   return by.flatMap(b=>(gram.opt.order==="rand"?shuffle(b.rs.slice()):b.rs).map(makeGramQ));
 }
 function makeGramQ(row){
