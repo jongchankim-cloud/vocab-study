@@ -491,6 +491,7 @@ $("aiCheck").onclick=async()=>{
     if(d.ok){
       aiStatus("ok",`<b>✓ AI 채점이 정상 동작합니다.</b><br>
         키 종류: ${esc(d.keyType||"-")} · 모델: ${esc(d.model||"-")} · 인증: ${esc(d.auth||"-")}<br>
+        ${d.thinking?`생각 설정: ${esc(d.thinking)} · `:""}${typeof d.ms==="number"?`응답 ${(d.ms/1000).toFixed(1)}초<br>`:""}
         시험 채점: "subsequently" 에 <b>"추후에"</b> → <b>${esc(d.sample?.verdict||"-")}</b>
         ${d.sample?.reason?`(${esc(d.sample.reason)})`:""}`);
     }else if(r.status===404){

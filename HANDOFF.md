@@ -49,7 +49,7 @@
 
 1. `supabase/functions/judge-meaning/index.ts` 를 `judge-meaning` 함수에 배포
    (프로젝트 `uxzsleryzpjaoqciyqvs`, `verify_jwt: true` 유지)
-2. `?selftest=1` 로 `model: gemini-2.5-flash` 확인
+2. `?selftest=1` 로 `model: gemini-3.5-flash-lite`, `thinking: level medium` 확인
    (anon 키를 `Authorization: Bearer` 헤더에 넣어야 한다)
 3. `devise ← 고안되다` 를 POST 해서 `via: "voice"` 가 나오는지도 확인
 4. 배포 뒤 관리 화면에서 `[전체 비우기]` — 예전 규칙으로 인정된 답을 지운다
@@ -115,6 +115,16 @@
 | gemini-3.5-flash | 12/16 | 830ms |
 | gemini-3.7-flash | 11/16 | 2617ms |
 | gemini-3.1-flash-lite | 10/16 | 526ms |
+
+**2026-11 모델 교체** — 구글이 `gemini-2.5-flash` 를 **2026-12-01 에 종료**하고 그 뒤 요청은
+`gemini-3.5-flash-lite` 로 자동으로 넘긴다(요금 같음: 입력 $0.30 / 출력 $2.50 per 1M).
+넘겨지면 2.x 용 `thinkingBudget` 이 먹지 않아 생각 없이(minimal) 채점하게 되므로,
+`MODELS` 맨 앞을 `gemini-3.5-flash-lite` 로 바꾸고 3.x 는 `thinkingLevel`(기본 `medium`,
+환경변수 `GEMINI_THINKING_LEVEL`)로 부른다. 3.x 에는 `temperature` 를 보내지 않는다.
+순서: 3.5-flash-lite → 2.5-flash(종료 전 예비) → 3.1-flash-lite(2027-05-07 종료).
+`gemini-3.5-flash` 는 이미 `gemini-3.6-flash`(2배 이상 비쌈)로 넘겨지고 있어 뺐다.
+**3.5 Flash-Lite 의 정확도는 아직 위 표처럼 재지 않았다** — 배포 뒤 검증 세트(8건)로 확인할 것.
+`🔌 연결 확인` 이 생각 설정과 응답 시간도 보여 준다.
 
 `gemini-2.5-flash-lite`, `gemini-2.0-flash-lite`, `gemini-2.5-pro` 는 이 키로 **404**
 ("no longer available to new users"). AI Studio 화면에는 보이지만 API 로는 안 된다.

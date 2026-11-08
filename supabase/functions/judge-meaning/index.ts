@@ -9,9 +9,10 @@
  *   supabase functions deploy judge-meaning
  *
  * 선택 환경변수:
- *   GEMINI_MODEL    사용할 모델 (기본: gemini-2.5-flash)
+ *   GEMINI_MODEL    사용할 모델 (기본: gemini-3.5-flash-lite)
  *   ALLOWED_ORIGIN  CORS 허용 도메인 (기본: * )
- *   GEMINI_THINKING_BUDGET  모델이 생각하는 데 쓸 토큰 (기본: 512, 0 이면 끔)
+ *   GEMINI_THINKING_LEVEL   3.x 모델이 생각하는 정도 minimal|low|medium|high (기본: medium)
+ *   GEMINI_THINKING_BUDGET  2.x 모델이 생각하는 데 쓸 토큰 (기본: 512, 0 이면 끔)
  */
 
 const API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
@@ -25,12 +26,20 @@ const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
      gemini-3.7-flash       11/16  2617ms   (느리고 응답이 잘림)
      gemini-3.1-flash-lite  10/16   526ms   (싸고 빠르지만 가장 부정확)
    gemini-2.5-flash-lite 와 gemini-2.0-flash-lite 는 구글이 내려서 404 다.
-   체인 앞에 두면 채점할 때마다 헛호출을 두 번 하고 시작하므로 뺐다. */
+   체인 앞에 두면 채점할 때마다 헛호출을 두 번 하고 시작하므로 뺐다.
+
+   2026-11 교체 — 구글이 gemini-2.5-flash 를 2026-12-01 에 종료하고 그 뒤 요청은
+   gemini-3.5-flash-lite 로 자동으로 넘긴다 (요금은 입력 $0.30 / 출력 $2.50 로 같다).
+   넘겨지면 2.x 용 thinkingBudget 이 먹지 않아 생각 없이 채점하게 되므로,
+   미리 3.5 Flash-Lite 를 맨 앞에 두고 3.x 방식(thinkingLevel)으로 부른다.
+   gemini-2.5-flash 는 종료 전까지 예비로 남긴다 (종료 뒤에는 3.5 Flash-Lite 로 간다).
+   gemini-3.5-flash 는 이미 gemini-3.6-flash(입력 $0.75 / 출력 $3.75, 2027-01 부터 2배)로
+   넘겨지고 있어서 뺐다. gemini-3.1-flash-lite 는 2027-05-07 종료 예정. */
 const MODELS = [
   Deno.env.get("GEMINI_MODEL"),
+  "gemini-3.5-flash-lite",
   "gemini-2.5-flash",
   "gemini-3.1-flash-lite",
-  "gemini-3.5-flash",
 ].filter(Boolean) as string[];
 
 /* ---- 사고 예산 ----
@@ -50,6 +59,37 @@ const THINKING_BUDGET = (() => {
   // 잘못된 값이 들어오면 조용히 응답이 잘리므로 기본값으로 되돌린다
   return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 512;
 })();
+
+/* ---- 3.x 모델의 생각 정도 ----
+   3.x 부터는 토큰 예산 대신 thinkingLevel 로 정한다. 기본값 minimal 은 분류 작업용이라
+   거의 생각하지 않는다. 위에서 본 것처럼 이 채점은 생각을 끄면 틀리므로 medium 을 기본으로 둔다
+   (구글 안내: 여러 단계를 따지는 일에는 medium 이상). temperature 도 3.x 에서는 쓰지 않는다
+   (무시되고, 다음 세대부터는 400 오류). */
+const THINKING_LEVEL = (() => {
+  const v = (Deno.env.get("GEMINI_THINKING_LEVEL") ?? "medium").trim().toLowerCase();
+  return ["minimal", "low", "medium", "high"].includes(v) ? v : "medium";
+})();
+const isGen2 = (model: string) => /^gemini-[12]\./.test(model);
+
+/* 모델 세대에 맞는 생성 설정 */
+function genConfig(model: string, schema: unknown, omitThinkingConfig: boolean) {
+  if (isGen2(model)) {
+    return {
+      temperature: 0,
+      maxOutputTokens: THINKING_BUDGET > 0 ? THINKING_BUDGET + 400 : 120,
+      responseMimeType: "application/json",
+      responseSchema: schema,
+      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: THINKING_BUDGET } }),
+    };
+  }
+  return {
+    // 3.x 는 생각 토큰도 이 한도에 들어간다. 모자라면 JSON 이 잘려 형식 오류가 나므로 넉넉히 둔다
+    maxOutputTokens: 4096,
+    responseMimeType: "application/json",
+    responseSchema: schema,
+    ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingLevel: THINKING_LEVEL } }),
+  };
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
@@ -242,13 +282,7 @@ function authOrder(): Auth[] {
 async function callRaw(model: string, prompt: string, schema: unknown, auth: Auth, omitThinkingConfig = false) {
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0,
-      maxOutputTokens: THINKING_BUDGET > 0 ? THINKING_BUDGET + 400 : 120,
-      responseMimeType: "application/json",
-      responseSchema: schema,
-      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: THINKING_BUDGET } }),
-    },
+    generationConfig: genConfig(model, schema, omitThinkingConfig),
   };
   let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -261,13 +295,7 @@ async function callRaw(model: string, prompt: string, schema: unknown, auth: Aut
 async function callGemini(model: string, prompt: string, auth: Auth, omitThinkingConfig: boolean) {
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0,
-      maxOutputTokens: THINKING_BUDGET > 0 ? THINKING_BUDGET + 400 : 120,
-      responseMimeType: "application/json",
-      responseSchema: SCHEMA,
-      ...(omitThinkingConfig ? {} : { thinkingConfig: { thinkingBudget: THINKING_BUDGET } }),
-    },
+    generationConfig: genConfig(model, SCHEMA, omitThinkingConfig),
   };
   let url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -283,7 +311,7 @@ async function callGemini(model: string, prompt: string, auth: Auth, omitThinkin
   });
 }
 
-type Judged = { verdict: string; reason: string; model: string; auth: Auth };
+type Judged = { verdict: string; reason: string; model: string; auth: Auth; thinkingOmitted: boolean };
 
 /** 모델 × 인증방식 × thinking 옵션을 필요한 만큼만 시도한다 */
 async function judge(prompt: string): Promise<{ ok: Judged } | { err: string }> {
@@ -317,7 +345,7 @@ async function judge(prompt: string): Promise<{ ok: Judged } | { err: string }> 
           return { ok: {
             verdict: out.verdict!,
             reason: String(out.reason ?? "").slice(0, 80),
-            model, auth,
+            model, auth, thinkingOmitted: omitThinkingConfig,
           } };
         }
         const errText = await res.text();
@@ -340,6 +368,7 @@ Deno.serve(async (req) => {
   // 배포 직후 키가 살아 있는지 확인하는 자체 점검
   //   curl -H "Authorization: Bearer <anon key>" ".../judge-meaning?selftest=1"
   if (req.method === "GET" && new URL(req.url).searchParams.has("selftest")) {
+    const t0 = Date.now();
     const r = await judge(buildPrompt("subsequently", "부", "그 뒤에, 나중에", "", "추후에", "", false, false));
     if ("ok" in r) {
       return json({
@@ -348,6 +377,9 @@ Deno.serve(async (req) => {
         keyType: API_KEY.startsWith("AQ.") ? "AQ (신형 인증 키)" : "AIza (기존 API 키)",
         model: r.ok.model,
         auth: r.ok.auth,
+        thinking: r.ok.thinkingOmitted ? "모델 기본값 (생각 설정이 거부됨)"
+          : isGen2(r.ok.model) ? `budget ${THINKING_BUDGET}` : `level ${THINKING_LEVEL}`,
+        ms: Date.now() - t0,
         sample: { answer: "추후에", verdict: r.ok.verdict, reason: r.ok.reason },
       });
     }
