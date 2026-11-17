@@ -639,7 +639,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-11-01-2";
+const APP_VER = "2026-11-17-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -1308,49 +1308,6 @@ const VOCAB_DATA = {
         {w:"disease", m:"질병"},
         {w:"climate", m:"기후"},
         {w:"pest", m:"해충"}
-      ],
-      "1-2311-42": [
-        {w:"act upon", m:"~에 작용하다"},
-        {w:"initial", m:"초기의"},
-        {w:"force", m:"힘"},
-        {w:"persist", m:"지속하다"},
-        {w:"tend+to부정사", m:"~하는 경향이 있다"},
-        {w:"constant", m:"지속적인"},
-        {w:"gravity", m:"중력"},
-        {w:"A as well as B", m:"B 뿐만 아니라 A도"},
-        {w:"resistance", m:"저항"},
-        {w:"accordingly", m:"따라서"},
-        {w:"(in a) path", m:"경로(로)"},
-        {w:"curved", m:"구부러진"},
-        {w:"represent", m:"나타내다"},
-        {w:"combination", m:"조합"},
-        {w:"elementary", m:"기본적인"},
-        {w:"in a real sense", m:"사실은, 진짜 의미로"},
-        {w:"action", m:"작용; 행동"},
-        {w:"isolated", m:"고립된"},
-        {w:"namely", m:"즉"},
-        {w:"joint", m:"공동의"},
-        {w:"mutual", m:"상호적인"},
-        {w:"arrangement into", m:"~로의 배치"},
-        {w:"disclose", m:"드러내다, 폭로하다"},
-        {w:"confine one's attention to", m:"~에 …의 주의를 국한시키다"},
-        {w:"separately", m:"개별적으로"},
-        {w:"significance", m:"중요성"},
-        {w:"tendency to/towards", m:"~에 대한 경향"},
-        {w:"act as", m:"~로서 작용하다"},
-        {w:"stimuli", m:"자극들"},
-        {w:"isolation", m:"고립"},
-        {w:"reveal", m:"드러내다"},
-        {w:"competitive", m:"경쟁적인"},
-        {w:"opposite sex", m:"이성"},
-        {w:"protective", m:"보호적인"},
-        {w:"trait", m:"특성"},
-        {w:"nature", m:"본성"},
-        {w:"not fully", m:"완전히 ~는 아닌"},
-        {w:"bring ~ into …", m:"~을 … 속으로 가져가다"},
-        {w:"relationship with", m:"~와의 관계"},
-        {w:"inertia", m:"관성"},
-        {w:"arouse", m:"유발하다"}
       ],
       "1-2410-36": [
         {w:"thrive", m:"성공하다, 번영하다"},
