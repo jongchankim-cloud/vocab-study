@@ -545,6 +545,7 @@
 
   <!-- ============ SCREEN: 지문 목록 ============ -->
   <section id="screen-psglist" class="hidden">
+    <button class="back-btn hidden" data-back id="psgListBack">← 시험 선택</button>
     <h1 class="title" id="psgListTitle">지문 공부</h1>
     <p class="subtitle" id="psgListSub">시험 범위의 지문을 골라 원문을 읽고, 문장을 누르면 해석을 볼 수 있어요.</p>
     <div class="grid" id="psgGroupGrid"></div>
@@ -553,6 +554,7 @@
 
   <!-- ============ SCREEN: 지문 하나 ============ -->
   <section id="screen-passage" class="hidden">
+    <button class="back-btn" data-back>← 지문 목록</button>
     <div class="panel">
       <div class="list-head">
         <h2 id="psgTitle"></h2>
@@ -568,6 +570,7 @@
 
   <!-- ============ SCREEN: 어법 — 시험 · 지문 · 방식 고르기 ============ -->
   <section id="screen-gramlist" class="hidden">
+    <button class="back-btn hidden" data-back id="gramListBack">← 시험 선택</button>
     <h1 class="title" id="gramListTitle">어법 공부</h1>
     <p class="subtitle" id="gramListSub"></p>
     <div class="grid" id="gramGroupGrid"></div>
@@ -588,6 +591,7 @@
 
   <!-- ============ SCREEN: 어법 문제 ============ -->
   <section id="screen-gram" class="hidden">
+    <button class="back-btn" data-back>← 범위 선택</button>
     <div class="stage">
       <div class="progress"><i id="gramBar"></i></div>
       <div class="counter" id="gramCounter"></div>
@@ -608,6 +612,7 @@
 
   <!-- ============ SCREEN: 어법 결과 ============ -->
   <section id="screen-gramres" class="hidden">
+    <button class="back-btn" data-back>← 범위 선택</button>
     <div class="result">
       <div class="big" id="gramResPct"></div>
       <div class="lbl" id="gramResLbl"></div>
@@ -651,7 +656,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-11-22-1";
+const APP_VER = "2026-11-22-2";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3747,18 +3752,36 @@ function show(name){
    그래서 시험 선택 화면까지는 사이트를 벗어나지 않는다. */
 const BACK_TO={day:"home", mode:"day", flash:"mode", quiz:"mode", result:"mode", list:"mode"};
 let curScreen="login", liveUrl=null;
+/* 지금 화면에서 한 단계 위로 가는 함수 (없으면 null = 맨 위 화면) */
+function backFn(){
+  if(BACK_TO[curScreen]) return ()=>{
+    const q=state.quiz;
+    if(curScreen==="quiz" && q && (q.i>0||q.answered) && !confirm("퀴즈를 그만두고 학습 방법으로 돌아갈까요?")) return false;
+    if(BACK_TO[curScreen]==="day") openDayScreen(state.group); else show(BACK_TO[curScreen]);
+  };
+  if(curScreen==="psglist") return psg.view ? ()=>openPassageHome() : null;
+  if(curScreen==="passage") return ()=>openPsgGroup(psg.group);
+  if(curScreen==="gramlist") return gram.group ? ()=>openGramHome() : null;
+  if(curScreen==="gram") return ()=>{
+    if(gram.qs && gram.qs.some(q=>q.done) && !confirm("어법 문제를 그만두고 범위 선택으로 돌아갈까요?")) return false;
+    openGramGroup(gram.group);
+  };
+  if(curScreen==="gramres") return ()=>openGramGroup(gram.group);
+  return null;
+}
 function armBack(){
-  if(BACK_TO[curScreen] && !(history.state&&history.state.vs)) history.pushState({vs:1},"",location.href);
+  const up=!!backFn();
+  const tb={psglist:"psgListBack", gramlist:"gramListBack"}[curScreen];
+  if(tb) $(tb).classList.toggle("hidden",!up);          // 시험 카드 화면에서는 숨긴다
+  if(up && !(history.state&&history.state.vs)) history.pushState({vs:1},"",location.href);
 }
 function goUp(){
-  const to=BACK_TO[curScreen]; if(!to) return;
-  const q=state.quiz;
-  if(curScreen==="quiz" && q && (q.i>0||q.answered) && !confirm("퀴즈를 그만두고 학습 방법으로 돌아갈까요?")){ armBack(); return; }
-  if(to==="day") openDayScreen(state.group); else show(to);
+  const f=backFn(); if(!f) return;
+  if(f()===false) armBack();                           // 확인창에서 취소 → 그대로 머문다
 }
 window.addEventListener("popstate",()=>{
   if(history.state&&history.state.vs) return;      // 앞으로 가기로 돌아온 경우
-  if(BACK_TO[curScreen]) goUp();
+  if(backFn()) goUp();
   // 지문·어법 탭에서는 화면은 그대로 두고 주소(?go=…)만 지금 화면에 맞춰 둔다 (새로고침 대비)
   else if(liveUrl && liveUrl!==location.pathname+location.search+location.hash) history.replaceState(null,"",liveUrl);
 });
@@ -5805,7 +5828,7 @@ function openGramGroup(g){
   $("gramListSub").textContent="지문을 고르고 문제 방식을 정한 뒤 시작하세요.";
   $("gramGroupGrid").classList.add("hidden"); $("gramMsg").classList.add("hidden");
   $("gramSetup").classList.remove("hidden");
-  $("gramBack").classList.toggle("hidden", Object.keys(gram.index).length<2);
+  $("gramBack").classList.add("hidden");   // 위쪽 [← 시험 선택] 이 대신한다
   const grid=$("gramPidGrid"); grid.innerHTML="";
   const total=list.reduce((t,x)=>t+x[1],0);
   const all=document.createElement("button"); all.className="day-chip all";
