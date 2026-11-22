@@ -110,6 +110,12 @@
 
   /* ---------- Flashcard ---------- */
   .stage{margin-top:18px}
+  /* 화면 위쪽 [← …] — 한 단계 위 화면으로 */
+  .back-btn{display:inline-flex;align-items:center;gap:4px;margin:2px 0 10px;padding:8px 14px 8px 10px;
+    border:1px solid var(--line);background:var(--card);border-radius:99px;font-size:14px;font-weight:700;color:var(--ink-soft)}
+  .back-btn:hover{border-color:var(--accent-ink);color:var(--accent-ink)}
+  .flash-done{display:block;width:100%;margin-top:10px;border:1px solid var(--accent-ink);background:var(--accent-soft);
+    color:var(--accent-ink);border-radius:12px;padding:14px;font-weight:800;font-size:15px}
   .progress{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:18px}
   .progress > i{display:block;height:100%;background:var(--accent-ink);width:0;transition:width .3s}
   .counter{text-align:center;font-size:13px;color:var(--ink-soft);margin-bottom:12px}
@@ -412,6 +418,7 @@
 
   <!-- ============ SCREEN: DAY select ============ -->
   <section id="screen-day" class="hidden">
+    <button class="back-btn" data-back>← 시험 선택</button>
     <h1 class="title" id="dayTitle">범위 선택</h1>
     <p class="subtitle">전체로 한 번에, 또는 <span id="unitWord">챕터</span>를 <b>여러 개 골라서</b> 함께 공부·시험 볼 수 있어요.</p>
     <div class="panel">
@@ -426,6 +433,7 @@
 
   <!-- ============ SCREEN: MODE select ============ -->
   <section id="screen-mode" class="hidden">
+    <button class="back-btn" data-back>← 범위 선택</button>
     <h1 class="title">학습 방법 선택</h1>
     <div class="scope-banner">
       <span id="scopeLabel"></span>
@@ -444,6 +452,7 @@
 
   <!-- ============ SCREEN: FLASHCARD ============ -->
   <section id="screen-flash" class="hidden">
+    <button class="back-btn" data-back>← 학습 방법</button>
     <div class="stage">
       <div class="progress"><i id="flashBar"></i></div>
       <div class="counter" id="flashCounter"></div>
@@ -467,11 +476,13 @@
         <button id="flashShuffle">🔀 섞기</button>
         <button id="flashNext" class="primary">다음 →</button>
       </div>
+      <button class="flash-done hidden" id="flashDone">✓ 다 봤어요 · 학습 방법으로</button>
     </div>
   </section>
 
   <!-- ============ SCREEN: QUIZ ============ -->
   <section id="screen-quiz" class="hidden">
+    <button class="back-btn" data-back>← 학습 방법</button>
     <div class="stage">
       <div class="progress"><i id="quizBar"></i></div>
       <div class="counter" id="quizCounter"></div>
@@ -516,6 +527,7 @@
 
   <!-- ============ SCREEN: LIST (vocab / favorites) ============ -->
   <section id="screen-list" class="hidden">
+    <button class="back-btn" data-back>← 학습 방법</button>
     <div class="panel">
       <div class="list-head">
         <h2 id="listTitle"></h2>
@@ -639,7 +651,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-11-19-2";
+const APP_VER = "2026-11-22-1";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -3724,8 +3736,33 @@ const screens = ["login","home","day","mode","flash","quiz","result","list","psg
 function show(name){
   screens.forEach(s=>$("screen-"+s).classList.toggle("hidden", s!==name));
   if(!["psglist","passage","gramlist","gram","gramres","login"].includes(name)) setGoUrl();
+  curScreen=name; armBack();
   window.scrollTo(0,0);
 }
+
+/* ---------- 뒤로 가기 ----------
+   단어 공부 화면마다 위쪽 [← …] 버튼이 한 단계 위 화면으로 보낸다.
+   휴대폰의 뒤로 가기도 같은 곳으로 보낸다 — 단어 공부의 안쪽 화면에 들어오면 기록을 하나 쌓아 두고,
+   뒤로 가기로 그 기록이 빠지면(popstate) 한 단계 위로 올라간 뒤 필요하면 다시 쌓는다.
+   그래서 시험 선택 화면까지는 사이트를 벗어나지 않는다. */
+const BACK_TO={day:"home", mode:"day", flash:"mode", quiz:"mode", result:"mode", list:"mode"};
+let curScreen="login", liveUrl=null;
+function armBack(){
+  if(BACK_TO[curScreen] && !(history.state&&history.state.vs)) history.pushState({vs:1},"",location.href);
+}
+function goUp(){
+  const to=BACK_TO[curScreen]; if(!to) return;
+  const q=state.quiz;
+  if(curScreen==="quiz" && q && (q.i>0||q.answered) && !confirm("퀴즈를 그만두고 학습 방법으로 돌아갈까요?")){ armBack(); return; }
+  if(to==="day") openDayScreen(state.group); else show(to);
+}
+window.addEventListener("popstate",()=>{
+  if(history.state&&history.state.vs) return;      // 앞으로 가기로 돌아온 경우
+  if(BACK_TO[curScreen]) goUp();
+  // 지문·어법 탭에서는 화면은 그대로 두고 주소(?go=…)만 지금 화면에 맞춰 둔다 (새로고침 대비)
+  else if(liveUrl && liveUrl!==location.pathname+location.search+location.hash) history.replaceState(null,"",liveUrl);
+});
+document.querySelectorAll("[data-back]").forEach(b=>b.onclick=goUp);
 
 
 /* 범위(챕터/DAY) 표시 이름 — 키가 숫자면 "DAY 3", 아니면 적은 그대로 */
@@ -3878,7 +3915,9 @@ function renderFlash(){
   $("flashBar").style.width=pct+"%";
   $("flashCounter").textContent=`${state.idx+1} / ${state.pool.length}`;
   $("flashPrev").disabled=state.idx===0;
-  $("flashNext").textContent=state.idx===state.pool.length-1?"처음으로":"다음 →";
+  const last=state.idx===state.pool.length-1;
+  $("flashNext").textContent=last?"처음으로":"다음 →";
+  $("flashDone").classList.toggle("hidden",!last);
   updateFavStar();
 }
 function updateFavStar(){
@@ -3914,6 +3953,7 @@ $("favQuiz").onclick=e=>{
 $("flashNext").onclick=()=>{state.idx=(state.idx+1)%state.pool.length;renderFlash();};
 $("flashPrev").onclick=()=>{if(state.idx>0){state.idx--;renderFlash();}};
 $("flashShuffle").onclick=()=>{shuffle(state.pool);state.idx=0;renderFlash();};
+$("flashDone").onclick=()=>show("mode");
 
 /* =====================================================================
    주관식 채점기 — 한국어 뜻 유사도 판정 (외부 API 불필요, 100% 브라우저)
@@ -5577,7 +5617,8 @@ function setGoUrl(go,g,pid){
   ["go","g","p"].forEach(k=>q.delete(k));
   if(go){ q.set("go",go); if(g) q.set("g",g); if(pid) q.set("p",pid); }
   const t=q.toString(), url=location.pathname+(t?"?"+t:"")+location.hash;
-  if(url!==location.pathname+location.search+location.hash) history.replaceState(null,"",url);
+  liveUrl=url;
+  if(url!==location.pathname+location.search+location.hash) history.replaceState(history.state,"",url);
 }
 // 단어 홈처럼 시험(그룹)마다 카드를 먼저 보여 주고, 고르면 그 시험의 지문 번호를 보여 준다
 async function openPassageHome(){
