@@ -257,7 +257,7 @@
   .psg-empty{font-size:14px;color:var(--ink-soft);line-height:1.7;text-align:center;padding:24px 8px}
   .psg-tip{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px}
   .psg-en{font-size:17.5px;line-height:1.85;white-space:pre-line;font-family:Georgia,"Times New Roman",serif;word-break:break-word}
-  /* 지문 제목 (DB passages.title — 없으면 숨긴다) */
+  /* 지문 제목 (PASSAGE_TITLES — 없으면 숨긴다) */
   .psg-name{margin:-4px 0 14px;font-family:Georgia,"Times New Roman",serif;font-size:19px;font-weight:700;line-height:1.35;color:var(--ink);word-break:break-word}
   .sen{cursor:pointer;border-radius:4px;transition:background .15s}
   .sen:hover{background:var(--accent-soft)}
@@ -660,7 +660,7 @@ const STRICT_ROSTER = false;
    (실제로 즐겨찾기 버튼이 그렇게 안 보인 적이 있다). 그래서
    1) 화면 아래에 버전을 항상 보여 주고
    2) 접속할 때 서버의 최신 버전을 캐시 없이 확인해서, 다르면 새로고침을 권한다. */
-const APP_VER = "2026-11-24-1";
+const APP_VER = "2026-11-24-2";
 document.addEventListener("DOMContentLoaded", ()=>{
   const t=document.getElementById("verTag"); if(t) t.textContent="v"+APP_VER;
   if(location.protocol!=="http:" && location.protocol!=="https:") return;  // 파일로 열면 검사 불가
@@ -5707,6 +5707,105 @@ function openPsgGroup(g){
   body.appendChild(grid);
   show("psglist");
 }
+/* 지문 제목 — 지문 화면에서 번호 아래에 한 줄로 보인다. 그룹 이름은 지문 표(passages.grp)와 같다.
+   1-2211-20·22·23·24 는 선생님 원고의 제목, 나머지는 지문을 읽고 지은 제목(2026-11-24).
+   제목은 지문 원문이 아니라서 DB 대신 여기에 둔다 — 고칠 때는 이 표만 바꾸면 된다. */
+const PASSAGE_TITLES = {
+  "용산 고1 2026 2학기 기말고사": {
+    "1-2510-20": "Stay in Touch to Keep Relationships Alive",
+    "1-2510-21": "The Urban Green Space Paradox",
+    "1-2510-22": "Understand the Ocean Before We Change It",
+    "1-2510-23": "Rome: A Melting Pot from the Start",
+    "1-2510-24": "A Universe Finely Tuned for Life",
+    "1-2510-29": "Be Humble About Changing Our Diets",
+    "1-2510-30": "Gen Z Banks on Its Values",
+    "1-2510-31": "The Myth of Iron-Rich Spinach",
+    "1-2510-32": "Animals' Number Sense Blurs with Bigger Numbers",
+    "1-2510-33": "How Thinking Shapes Our Emotions",
+    "1-2510-34": "Letting Each Animal Flourish in Its Own Way",
+    "1-2510-35": "Posting Memories Helps Us Keep Them",
+    "1-2510-36": "Eating Is a Multisensory Experience",
+    "1-2510-37": "How Children Come to Understand Opposites",
+    "1-2510-38": "Human Social Life Is Shaped by Nurture",
+    "1-2510-39": "Fashion: A Tool to Make Us Consume More",
+    "1-2510-40": "Illusory Progress Motivates Us",
+    "1-2510-42": "Can AI Limit Our Creativity?",
+    "1-2410-36": "Social Pressure That Feels Like Our Own Will",
+    "1-2410-39": "Life as a High-Dimensional System",
+    "1-2311-20": "Take Charge of Your Own Growth",
+    "1-2311-22": "The Details That Matter in Fiction",
+    "1-2311-23": "Oral Health Affects the Whole Body",
+    "1-2311-24": "Why We Get Bored So Easily",
+    "1-2311-38": "Losing Crop Diversity Puts Us at Risk",
+    "1-2211-20": "Give Readers a Reason to Return",
+    "1-2211-22": "How Frightening News Discourages Action",
+    "1-2211-23": "Melting Ice and Longer Days",
+    "1-2211-24": "Stay Open to Other Viewpoints",
+    "1-2211-32": "Innovation Lets Us Work for Each Other",
+    "1-2211-38": "Language Is Just One Part of the Mind",
+    "교과서 3-1": "Tigers in Korean Culture",
+    "교과서 3-2": "Tigers in Korean Folktales",
+    "교과서 3-3": "The Tiger as a Symbol of Korea",
+    "교과서 4-1": "Nature's Solutions to Environmental Problems",
+    "교과서 4-2": "Mealworms That Help Break Down Plastic",
+    "교과서 4-3": "Cleaning Polluted Soil with Willow Trees",
+    "교과서 4-4": "A Second Life for Used Coffee Grounds"
+  },
+  "용산 고2 2026 2학기 기말고사": {
+    "2-2510-33": "Glass Windows as Tools of Royal Power",
+    "2-2510-34": "The Spiral of Silence",
+    "2-2510-35": "Units of Measure Are Arbitrary Choices",
+    "2-2510-36": "How Sea Creatures Handle Salt",
+    "2-2510-37": "Moths and Butterflies: More Alike Than Different",
+    "2-2510-38": "Active and Inactive Wildlife Management",
+    "2-2510-39": "From Built-In Waste to Products as a Service",
+    "2-2510-40": "Nature Won't Fit Our Fixed View of Time",
+    "2-2410-20": "What It Means to Be Mathematically Literate",
+    "2-2410-21": "No Pill for Instant Virtue",
+    "2-2410-22": "Measurement Depends on Theory",
+    "2-2410-23": "Pain Keeps Us in Balance",
+    "2-2410-24": "The Endless Itch to Upgrade",
+    "2-2410-29": "Finding Out What Animals Want",
+    "2-2410-30": "Why Birds Breed in Seasons",
+    "2-2410-31": "Knowing Your Resources Boosts Creativity",
+    "2-2410-32": "Every Translation Is a Crowd Translation",
+    "2-2410-33": "Reading as a Family of Activities",
+    "2-2410-34": "Weber's Law: Noticing Differences",
+    "2-2410-35": "The Tragedy of the Commons"
+  },
+  "보성여고 2학년 2학기 기말고사": {
+    "3-5": "See Yourself as You Truly Are",
+    "3-6": "Great Things Take Time",
+    "3-7": "Agriculture and Its Challenges",
+    "3-8": "Focus on Actions, Not Personality",
+    "4-5": "From a Brick on the Pedal to Personalized Medicine",
+    "4-6": "Art That Challenges Us Can Change Us",
+    "4-7": "Fungi Protect Forest Diversity",
+    "4-8": "How North America Lost Its Food Culture",
+    "5-5": "The Baby Bottle: An Overlooked Time-Saver",
+    "5-6": "Public Clocks and Economic Progress",
+    "5-7": "Positive Fantasies Drain Our Energy",
+    "5-8": "AI Makes Emotional Intelligence More Valuable",
+    "6-5": "Diversity Makes Science More Objective",
+    "6-6": "What Empathy Means in Business",
+    "6-7": "How Shills Made Shopping Carts Popular",
+    "6-8": "The Upside of Cooking Less",
+    "7-5": "Make Deadlines Feel Close",
+    "7-6": "The Pressure to Always Be Reachable",
+    "7-7": "Should Care Robots Deceive Us?",
+    "7-8": "Vote with Your Wallet",
+    "11-7": "Lectins: Plants' Hidden Weapon",
+    "11-8": "Rethinking Sell-By Dates",
+    "12-7": "Technology Reshapes Privacy",
+    "12-8": "Why Caffeine Affects People Differently",
+    "13-7": "Reactance: Wanting What We Can't Have",
+    "13-8": "The Sunk Cost Fallacy",
+    "14-7": "Financial Markets Separate Earning from Spending",
+    "14-8": "Not Everything That Counts Can Be Counted",
+    "15-7": "Moral Character Can Still Be Taught",
+    "15-8": "Weak Rulers, Strong Democracy"
+  }
+};
 async function openPassage(group,i){
   const list=(psg.index&&psg.index[group])||[];
   if(i<0||i>=list.length) return;
@@ -5730,7 +5829,7 @@ async function openPassage(group,i){
     body.innerHTML=`<p class="psg-empty">지문을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.</p>`;
     return;
   }
-  { const nm=$("psgName"), t=String(data.title||"").trim();
+  { const nm=$("psgName"), t=String((PASSAGE_TITLES[group]||{})[pid]||"").trim();
     nm.textContent=t; nm.classList.toggle("hidden",!t);
   }
   const enS=splitSentences(data.en), koS=splitSentences(data.ko||"");
