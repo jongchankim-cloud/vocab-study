@@ -12,6 +12,9 @@
   같다 (`1-2510-20`, `교과서 3-1`). 원문과 해석의 ❶❷ 개수가 같으면 문장을 눌러 그 문장 해석.
 - 지문 넣기: 원문 · 해석 · 단어를 받아 `insert … on conflict (grp, pid) do update` 로 넣는다
   (형식은 `supabase/examples/지문_넣기.sql`, 단어는 `words` jsonb `[{w, m, note}]`).
+- 지문 제목(11-24): `passages.title` + `passage_get` 이 title 도 돌려준다 — `20261124_1_지문_제목.sql`
+  (선생님이 SQL Editor 에서 실행해야 열이 생긴다. 88개 제목도 같은 파일에 있음: 1-2211-20·22·23·24 는 선생님 원고,
+  나머지는 Claude 초안). 화면은 지문 번호 아래에 제목 한 줄(`#psgName`), 제목이 없으면 숨긴다.
 - 어법은 아래 「어법 공부」. (브랜치 `claude/focused-gates-w696hm` 의 옛 시제품은 쓰지 않는다)
 - **Supabase 커넥터는 지금 score-system 조직만 보인다.** 대신 이 세션 환경(검수)에 Vocab-study 비밀 키가 저장돼 있어
   REST(`/rest/v1/passages` 등)로 직접 읽고 쓸 수 있다. 키가 없는 환경에서는 SQL 을 만들어
